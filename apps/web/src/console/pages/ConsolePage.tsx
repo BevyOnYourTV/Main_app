@@ -1,12 +1,17 @@
 import { AppShell } from '../../shared/components/AppShell'
-import { ButtonRow } from '../components/focus_test'
+import { MainMenu } from '../components/MainMenu'
 
 export function ConsolePage() {
   return (
     <AppShell surface="Console">
-      <section aria-labelledby="console-heading">
-        <h1 id="console-heading">Console ready</h1>
-        <ButtonRow />
+      <section
+        aria-labelledby="console-heading"
+        className="w-full max-w-7xl"
+      >
+        <h1 id="console-heading" className="mb-8 text-3xl font-bold sm:text-4xl">
+          Main menu
+        </h1>
+        <MainMenu />
       </section>
     </AppShell>
   )

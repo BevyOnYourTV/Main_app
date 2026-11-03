@@ -1,3 +1,13 @@
+# Human written guidance
+
+1. use globally available skills for the following topics: 
+- accessibility
+- shadcn
+- Norigin spatial navigation library
+
+2. general UI
+- all UIs should be navigable with a controller/keyboard/etc...
+
 # AI generated guidance
 
 1. Spatial navigation styling

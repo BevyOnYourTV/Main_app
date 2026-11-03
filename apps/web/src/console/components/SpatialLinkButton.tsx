@@ -6,11 +6,13 @@ import { cn } from '@/lib/utils'
 
 type SpatialLinkButtonProps = LinkProps &
   VariantProps<typeof buttonVariants> & {
+    focusKey?: string
     label: string
   }
 
 export function SpatialLinkButton({
   className,
+  focusKey,
   label,
   size = 'lg',
   variant = 'default',
@@ -18,6 +20,7 @@ export function SpatialLinkButton({
 }: SpatialLinkButtonProps) {
   const { ref, focused } = useFocusable<object, HTMLAnchorElement>({
     accessibilityLabel: label,
+    focusKey,
     onEnterPress: () => ref.current?.click(),
   })
 
