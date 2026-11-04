@@ -1,9 +1,15 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { MemoryRouter } from 'react-router'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { findGameById } from '../../../src/console/data/gameCatalog'
+import { setSessionSelectedGame } from '../../../src/console/data/selectedGameSession'
 import { LobbyPage } from '../../../src/console/pages/LobbyPage'
 
 describe('LobbyPage', () => {
+  beforeEach(() => {
+    window.sessionStorage.clear()
+  })
+
   it('renders the visual-only lobby with mock players and join details', () => {
     const markup = renderToStaticMarkup(
       <MemoryRouter basename="/console" initialEntries={['/console/lobby']}>
@@ -36,5 +42,27 @@ describe('LobbyPage', () => {
       '/console',
       '/console/games',
     ])
+  })
+
+  it('links directly to the stored game lobby', () => {
+    const storedGame = findGameById('neon-drift')
+
+    if (!storedGame) {
+      throw new Error('Neon Drift mock game is missing')
+    }
+
+    setSessionSelectedGame(storedGame)
+
+    const markup = renderToStaticMarkup(
+      <MemoryRouter basename="/console" initialEntries={['/console/lobby']}>
+        <LobbyPage />
+      </MemoryRouter>,
+    )
+    const document = new DOMParser().parseFromString(markup, 'text/html')
+
+    expect(
+      document.querySelector('nav[aria-label="Next lobby destination"] a')
+        ?.getAttribute('href'),
+    ).toBe('/console/games/neon-drift/lobby')
   })
 })

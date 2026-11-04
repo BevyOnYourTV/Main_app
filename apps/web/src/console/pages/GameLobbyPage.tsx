@@ -13,10 +13,12 @@ import { SpatialLinkButton } from '../components/SpatialLinkButton'
 import { StartGameButton } from '../components/StartGameButton'
 import { findGameById } from '../data/gameCatalog'
 import { mockGameLobbyPlayers } from '../data/gameLobbyPlayers'
+import { setSessionSelectedGame } from '../data/selectedGameSession'
 
 export function GameLobbyPage() {
   const { gameId } = useParams()
-  const gameName = findGameById(gameId)?.name ?? 'Selected game'
+  const game = findGameById(gameId)
+  const gameName = game?.name ?? 'Selected game'
   const { ref, focusKey, focusSelf } = useFocusable({
     focusKey: 'GAME_LOBBY_PAGE',
     preferredChildFocusKey: 'GAME_LOBBY_START',
@@ -25,6 +27,12 @@ export function GameLobbyPage() {
   useEffect(() => {
     focusSelf()
   }, [focusSelf])
+
+  useEffect(() => {
+    if (game) {
+      setSessionSelectedGame(game)
+    }
+  }, [game])
 
   return (
     <>

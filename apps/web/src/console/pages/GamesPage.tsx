@@ -12,18 +12,34 @@ import {
   mockGameCategories,
   type GameSummary,
 } from '../data/gameCatalog'
+import {
+  getSessionSelectedGame,
+  setSessionSelectedGame,
+} from '../data/selectedGameSession'
 
 export function GamesPage() {
   const navigate = useNavigate()
-  const [selectedGame, setSelectedGame] = useState<GameSummary>(initialGame)
+  const [selectedGame, setSelectedGame] = useState<GameSummary>(
+    () => getSessionSelectedGame() ?? initialGame,
+  )
   const { ref, focusKey, focusSelf } = useFocusable({
     focusKey: 'GAMES_PAGE',
-    preferredChildFocusKey: `GAME_${initialGame.id.toUpperCase()}`,
+    preferredChildFocusKey: `GAME_${selectedGame.id.toUpperCase()}`,
   })
 
   useEffect(() => {
     focusSelf()
   }, [focusSelf])
+
+  const selectGame = (game: GameSummary) => {
+    setSessionSelectedGame(game)
+    setSelectedGame(game)
+  }
+
+  const playGame = (game: GameSummary) => {
+    setSessionSelectedGame(game)
+    navigate(`${game.id}/lobby`)
+  }
 
   return (
     <>
@@ -41,8 +57,8 @@ export function GamesPage() {
           >
             <GameSelectionMenu
               categories={mockGameCategories}
-              onPlayGame={(game) => navigate(`${game.id}/lobby`)}
-              onSelectGame={setSelectedGame}
+              onPlayGame={playGame}
+              onSelectGame={selectGame}
               selectedGameId={selectedGame.id}
             />
             <GameDetailsPanel game={selectedGame} />

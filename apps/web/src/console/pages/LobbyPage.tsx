@@ -11,6 +11,7 @@ import {
 } from '../components/LobbyPlayerList'
 import { LobbyJoinDetails } from '../components/LobbyJoinDetails'
 import { LobbyNavigationRail } from '../components/LobbyNavigationRail'
+import { getSessionSelectedGame } from '../data/selectedGameSession'
 
 const mockPlayers: LobbyPlayer[] = [
   { id: 1, name: 'Player 1', status: 'Connected' },
@@ -22,6 +23,10 @@ const mockPlayers: LobbyPlayer[] = [
 ]
 
 export function LobbyPage() {
+  const selectedGame = getSessionSelectedGame()
+  const gamesDestination = selectedGame
+    ? `/games/${selectedGame.id}/lobby`
+    : '/games'
   const { ref, focusKey, focusSelf } = useFocusable({
     focusKey: 'LOBBY_PAGE',
     preferredChildFocusKey: 'LOBBY_KICK_1',
@@ -64,7 +69,7 @@ export function LobbyPage() {
                 icon={ArrowRightIcon}
                 iconPosition="end"
                 label="Games"
-                to="/games"
+                to={gamesDestination}
               />
             </nav>
           </div>
