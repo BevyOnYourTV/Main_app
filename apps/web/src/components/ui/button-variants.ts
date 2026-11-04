@@ -30,6 +30,9 @@ const buttonVariants = cva(
           "size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
         'icon-lg': 'size-9',
         menu: 'h-auto min-h-44 w-full px-6 py-10 text-2xl sm:min-h-64 lg:min-h-[28rem] lg:text-3xl',
+        rail: 'h-auto min-h-24 w-full flex-col gap-3 whitespace-normal px-4 py-5 text-center text-base lg:min-h-full lg:text-lg',
+        game: 'h-auto min-h-14 w-full px-6 py-3 text-lg',
+        gameLobbyAction: 'h-auto min-h-20 w-full px-8 py-5 text-xl',
       },
     },
     defaultVariants: {
