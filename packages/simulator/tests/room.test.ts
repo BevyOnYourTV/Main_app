@@ -178,6 +178,16 @@ describe('createRoom', () => {
     expect(onLog).toHaveBeenCalledOnce()
   })
 
+  it('has already applied a message when its log entry is announced', () => {
+    const { game, room } = setup()
+    const phases: string[] = []
+    room.onLog(() => phases.push(room.getPhase()))
+
+    game.start()
+
+    expect(phases).toEqual(['running'])
+  })
+
   it('measures latency through the game', async () => {
     const { room } = setup()
 

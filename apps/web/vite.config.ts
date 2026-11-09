@@ -16,6 +16,7 @@ export default defineConfig({
         home: resolve(import.meta.dirname, 'index.html'),
         console: resolve(import.meta.dirname, 'console/index.html'),
         controller: resolve(import.meta.dirname, 'controller/index.html'),
+        dev: resolve(import.meta.dirname, 'dev/index.html'),
       },
     },
   },
