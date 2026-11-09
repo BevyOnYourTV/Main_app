@@ -1,4 +1,5 @@
 export { createControllerSdk, type ControllerSdk } from './controller'
+export { createEmitter, type Emitter } from './emitter'
 export {
   gameManifestSchema,
   MAX_PLAYERS_PER_ROOM,
@@ -18,6 +19,11 @@ export {
   type Transport,
   type Unsubscribe,
 } from './transport'
+export {
+  createWindowTransport,
+  type MessageHost,
+  type MessageTarget,
+} from './windowTransport'
 export {
   validateAction,
   type ActionValidator,

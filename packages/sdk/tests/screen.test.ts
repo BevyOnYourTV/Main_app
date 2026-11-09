@@ -16,10 +16,29 @@ function setup() {
   const sent = vi.fn()
   platformSide.onMessage(sent)
   const sdk = createScreenSdk(gameSide, { onProtocolError })
+  sent.mockClear()
   return { onProtocolError, platformSide, sdk, sent }
 }
 
 describe('createScreenSdk', () => {
+  it('announces that the game is ready', () => {
+    const [gameSide, platformSide] = createMemoryTransportPair()
+    const sent = vi.fn()
+    platformSide.onMessage(sent)
+
+    createScreenSdk(gameSide)
+
+    expect(sent).toHaveBeenCalledWith({ type: 'ready' })
+  })
+
+  it('answers latency pings', () => {
+    const { platformSide, sent } = setup()
+
+    platformSide.send({ type: 'ping', id: 7 })
+
+    expect(sent).toHaveBeenCalledWith({ type: 'pong', id: 7 })
+  })
+
   it('tracks players joining and leaving', () => {
     const { platformSide, sdk } = setup()
     const onJoin = vi.fn()
