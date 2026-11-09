@@ -170,12 +170,14 @@ export function createRoom({
         }
         break
       }
-      case 'lifecycle':
-        phase = phaseByLifecycle[message.phase]
-        break
-      case 'score':
-        scores = { ...scores, [message.playerId]: message.points }
-        break
+    }
+  }
+
+  const applyGameState = (message: ScreenOutbound) => {
+    if (message.type === 'lifecycle') {
+      phase = phaseByLifecycle[message.phase]
+    } else if (message.type === 'score') {
+      scores = { ...scores, [message.playerId]: message.points }
     }
   }
 
@@ -189,6 +191,7 @@ export function createRoom({
       })
       return
     }
+    applyGameState(parsed.data)
     if (parsed.data.type !== 'pong') {
       record({ direction: 'from-screen', message: parsed.data })
     }
