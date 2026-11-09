@@ -33,6 +33,7 @@ const buttonVariants = cva(
         rail: 'h-auto min-h-24 w-full flex-col gap-3 whitespace-normal px-4 py-5 text-center text-base lg:min-h-full lg:text-lg',
         game: 'h-auto min-h-14 w-full px-6 py-3 text-lg',
         gameLobbyAction: 'h-auto min-h-20 w-full px-8 py-5 text-xl',
+        controller: 'h-auto min-h-16 min-w-11 touch-none px-4 py-3 text-xl',
       },
     },
     defaultVariants: {
