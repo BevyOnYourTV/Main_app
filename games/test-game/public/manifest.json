@@ -1,0 +1,10 @@
+{
+  "id": "test-game",
+  "name": "Tally Race",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "minPlayers": 1,
+  "maxPlayers": 8,
+  "controllerComponents": ["button"],
+  "accessibility": ["screen-reader"]
+}

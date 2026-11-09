@@ -2,9 +2,9 @@
   "name": "platform",
   "private": true,
   "workspaces": [
-    "apps/*",
     "packages/*",
-    "games/*"
+    "games/*",
+    "apps/*"
   ],
   "scripts": {
     "lint": "npm run lint --workspaces --if-present",
