@@ -75,10 +75,13 @@ export const screenInboundSchema = z.discriminatedUnion('type', [
     playerId: idSchema,
     action: controllerActionSchema,
   }),
+  z.object({ type: z.literal('ping'), id: z.number().int() }),
 ])
 
 /** Messages the game running on the screen sends to the platform. */
 export const screenOutboundSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('ready') }),
+  z.object({ type: z.literal('pong'), id: z.number().int() }),
   z.object({
     type: z.literal('set-controller'),
     layout: controllerLayoutSchema,

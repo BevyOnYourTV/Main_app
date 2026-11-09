@@ -73,6 +73,9 @@ export function createScreenSdk(
       case 'action':
         actions.emit({ action: message.action, playerId: message.playerId })
         break
+      case 'ping':
+        send({ type: 'pong', id: message.id })
+        break
     }
   }
 
@@ -89,6 +92,8 @@ export function createScreenSdk(
   const lifecycle = (
     phase: Extract<ScreenOutbound, { type: 'lifecycle' }>['phase'],
   ) => send({ type: 'lifecycle', phase })
+
+  send({ type: 'ready' })
 
   return {
     dispose: stop,
