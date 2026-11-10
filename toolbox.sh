@@ -168,13 +168,15 @@ while true; do
         "Run Tests" \
         "Run Lint" \
         "Run Build" \
+        "Run Dev-web" \
         "Exit" \
         --header "AirConsole toolbox")"
 
     case "$option" in
         "Run Tests")
             gum style --foreground 212 "Running tests..."
-            # Add your test command here.
+            cd "./apps/web" || exit 1
+            npm run test
             ;;
         "Run Lint")
             gum style --foreground 212 "Running lint..."
@@ -183,6 +185,11 @@ while true; do
         "Run Build")
             gum style --foreground 212 "Running build..."
             # Add your build command here.
+            ;;
+        "Run Dev-web")
+            gum style --foreground 212 "Running website..."
+            cd "./apps/web" || exit 1
+            npm run dev
             ;;
         "Exit")
             gum style --foreground 212 "Exiting..."
