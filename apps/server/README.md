@@ -19,6 +19,24 @@ npm run start:dev --workspace server
 
 The server listens on port `3000` by default. Set `PORT` to change it. `CLIENT_ORIGINS` can be a comma-separated list of allowed browser origins; without it, CORS is open for local development.
 
+## Run with Docker
+
+From `Main_app/`, start the development server with file watching, the Node inspector, and debug logs:
+
+```bash
+docker compose -f docker-compose.dev.yml up --build
+```
+
+The dev server is available on `http://localhost:3000`, with the inspector on port `9229`. Source changes reload automatically. Override `SERVER_PORT`, `DEBUG_PORT`, or `CLIENT_ORIGINS` as needed. The development tester is enabled by default in this configuration. Stop it with `docker compose -f docker-compose.dev.yml down`.
+
+For the production image, which runs compiled JavaScript without watch mode or the inspector:
+
+```bash
+docker compose -f docker-compose.yml up --build
+```
+
+Both configurations emit debug level application logs. The production server is available on `http://localhost:3000` and the Socket.IO namespace is `/realtime`. Set `SERVER_PORT` to change the host port. The development tester is disabled by default in production. Stop it with `docker compose -f docker-compose.yml down`.
+
 For a small browser-based test page, enable it explicitly when starting the server:
 
 ```bash
