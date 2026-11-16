@@ -1,132 +1,105 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Realtime server
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+NestJS + Socket.IO server for the console, mobile controllers and games. The Socket.IO namespace is `/realtime`. All application events use the B01 envelope:
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
-
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
-
-```bash
-$ npm install
+```ts
+type Envelope<T> = { v: 0.1; timestamp: number; payload: T }
 ```
 
-## Compile and run the project
+Server validation schemas and inferred event types live in `src/protocol/realtime-protocol.schema.ts`. Their controller action, layout, player and game message constraints mirror the SDK wire shapes. They are defined locally so Node can load the NestJS runtime without trying to execute the SDK's extensionless TypeScript source imports.
+
+## Run locally
+
+From `Main_app/`:
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+npm install
+npm run start:dev --workspace server
 ```
 
-## Run tests
+The server listens on port `3000` by default. Set `PORT` to change it. `CLIENT_ORIGINS` can be a comma-separated list of allowed browser origins; without it, CORS is open for local development.
+
+For a small browser-based test page, enable it explicitly when starting the server:
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+ENABLE_REALTIME_TESTER=true npm run start:dev --workspace server
 ```
 
-## Deployment
+Then open `http://localhost:3000/dev/realtime-tester`. It simulates a console and one controller and provides buttons for room creation/join, game start, controller layout, input, ping and session reconnection. The route is not registered unless the environment variable is enabled.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+See [the full connection lifecycle guide](./docs/connection-lifecycle.md) for the host and one/two-controller event sequence, payloads, game messaging, and reconnection flow.
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Connect a console
+
+```ts
+import { io } from 'socket.io-client'
+
+const socket = io('http://localhost:3000/realtime')
+socket.on('session:ready', ({ payload }) => {
+  sessionStorage.setItem('sessionToken', payload.sessionToken)
+  socket.emit('room:create', { v: 0.1, timestamp: Date.now(), payload: {} })
+})
+socket.on('room:created', ({ payload }) => console.log(payload.roomCode))
+socket.on('room:state', ({ payload }) => renderLobby(payload))
+socket.on('player:action', ({ payload }) => handleGameAction(payload.playerId, payload.action))
+socket.on('error', ({ payload }) => showServerError(payload))
+socket.on('connect', () => {
+  socket.emit('session:hello', { v: 0.1, timestamp: Date.now(), payload: { role: 'console' } })
+})
+```
+
+## Connect a controller
+
+After connecting, send `session:hello` with role `controller`. Once `session:ready` arrives, join using the short code and a nickname:
+
+```ts
+socket.emit('room:join', {
+  v: 0.1,
+  timestamp: Date.now(),
+  payload: { roomCode: 'AB12CD', nickname: 'Alex' },
+})
+socket.on('room:joined', ({ payload }) => savePlayerId(payload.playerId))
+socket.on('room:state', ({ payload }) => renderLobby(payload))
+socket.on('game:layout', ({ payload }) => renderController(payload.layout))
+socket.on('game:private', ({ payload }) => showPrivateGameData(payload.data))
+```
+
+Controller actions use the SDK's existing `ControllerOutbound` shape:
+
+```ts
+socket.emit('game:input', {
+  v: 0.1,
+  timestamp: Date.now(),
+  payload: { type: 'action', action: { componentId: 'jump', value: { kind: 'button', pressed: true } } },
+})
+```
+
+## Events
+
+| Direction | Event | Purpose |
+|---|---|---|
+| Client → server | `session:hello` | Declare this connection's `console` or `controller` role; send before other events. This is a role handshake, not account authentication. |
+| Server → client | `session:ready` | Confirms the assigned role and returns a resumable session token. |
+| Client → server | `room:create`, `room:join`, `room:leave`, `room:kick` | Create and manage the in-memory lobby. |
+| Server → clients | `room:created`, `room:joined`, `room:state`, `player:joined`, `player:left`, `host:changed` | Lobby snapshots and changes. |
+| Client → server | `game:start` | Host starts a game by id. |
+| Controller → server → host | `game:input` → `player:action` | Validated controller action, checked against the active layout. |
+| Host → server → controllers | `game:message` → `game:layout`, `game:private`, `game:score`, `game:started`, `game:paused`, `game:ended` | SDK screen messages routed to the room or one player. |
+| Client → server → client | `ping` → `pong` | Round-trip latency measurement. |
+| Server → client | `error` | Versioned error code and safe validation details. |
+
+## Server logs
+
+Start the server with `LOG_LEVEL=debug` to show routine realtime events in the terminal:
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+LOG_LEVEL=debug npm run start:dev --workspace server
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+At the default log level, routine events remain hidden while warnings and errors stay visible. Debug output reports socket connections, authentication, room creation and membership, game lifecycle changes, session resumes/expiry, kicks, host migration, and rejected messages/actions. Entries include relevant room, player, game, or shortened socket ids. Session tokens and private message contents are never logged. Controller actions are not logged individually to keep input traffic from flooding the terminal.
 
-## Observability
+Unknown or malformed events are rejected and produce a versioned `error`; their requested action is not applied. The server rejects application events before the role handshake. Sockets that do not complete `session:hello` within five seconds are disconnected. Socket.IO's reconnect mechanism is supported; clients should listen to `connect`, `disconnect` and `connect_error`. After a new connection, send `session:reconnect` with the token from `session:ready` to resume the same in-memory session and room for up to 30 seconds. This handshake assigns a connection role; it does not verify a user account or device identity. See the [connection lifecycle guide](./docs/connection-lifecycle.md) for authorization, event errors, leave/kick behavior, and reconnect edge cases.
 
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
+## Current scope and limits
 
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
-
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
-
-To add it to this project, run this and approve the code it prints at [observe.nestjs.com/link](https://observe.nestjs.com/link) - signing up for free if you have no account:
-
-```bash
-$ npx @nestjs/observe link
-```
-
-It installs `@nestjs/observe`, wires it into `AppModule` and `main.ts`, and writes the app key and secret into `.env`, which every `nest start` script (`start`, `start:dev`, `start:debug`) then loads. In production, set `OBSERVE_APP_KEY` and `OBSERVE_APP_SECRET` in the environment instead.
-
-Or do it by hand:
-
-```bash
-$ npm install @nestjs/observe
-```
-
-Then follow the [setup guide](https://docs.nestjs.com/observability/sdk) - it takes a single import and an app key.
-
-The free plan needs no payment details and covers 300,000 events a month. You can also browse the [live demo](https://www.observe-demo.nestjs.com/dashboard) first - the whole dashboard over a busy service's data, with nothing to install.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observe](https://observe.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Room state is held in memory, so rooms are lost when the process restarts and this server currently expects a single instance. A room supports up to eight controllers. Disconnected sessions are retained for 30 seconds. Rate limiting, persistent sessions, profanity filtering, inactive-room expiry and load testing remain separate backlog work.
