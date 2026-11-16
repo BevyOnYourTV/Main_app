@@ -1,0 +1,32 @@
+name: Task
+description: Track a specific piece of project work
+title: "[Task]: "
+labels:
+  - task
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Describe the work that needs to be completed.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: List the conditions that must be met for this task to be complete.
+      placeholder: |
+        - [ ] First requirement
+        - [ ] Second requirement
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional notes
+      description: Add any useful context, dependencies, or references.
+    validations:
+      required: false

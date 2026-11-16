@@ -1,75 +1,45 @@
-# React + TypeScript + Vite
+# AirConsole web application
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This is the shared multi-page Vite project for the TV/desktop console and the
+mobile controller.
 
-Currently, two official plugins are available:
+## Entry points
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- `/console/` loads `src/console/main.tsx`.
+- `/controller/` loads `src/controller/main.tsx`.
 
-## React Compiler
+The production build emits both entry points while keeping their application
+module graphs separate. Code in `src/shared` is reserved for modules that are
+used by both surfaces.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Source boundaries
 
-## Expanding the ESLint configuration
+- `src/console`: console components, features, pages, and state.
+- `src/controller`: controller components, features, pages, and state.
+- `src/shared`: shared accessibility, components, and configuration.
+- `tests/console`: console unit, component, and accessibility tests.
+- `tests/controller`: controller unit, component, and accessibility tests.
+- `tests/shared`: tests for shared web modules.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Console code must not import controller code, and controller code must not
+import console code.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Commands
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```sh
+npm run dev
+npm run build
+npm run lint
+npm test
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+## Styling
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Tailwind CSS is available in both application entry points through
+`src/shared/styles/tailwind.css`. Tailwind v4 theme tokens are configured in
+that stylesheet and exposed as utilities such as `bg-air-background`,
+`text-air-foreground`, and `outline-air-focus`.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
-```
+Keep utility class names complete and statically detectable. For variants,
+map application state to full class names instead of constructing partial
+class names dynamically.
