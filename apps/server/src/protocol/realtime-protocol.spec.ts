@@ -34,7 +34,7 @@ describe('[B01] Versioned Real-Time Protocol Validation', () => {
       } catch (err) {
         expect(err).toBeInstanceOf(WsException);
         const errorData = (err as WsException).getError() as ServerError;
-        expect(errorData.error.code).toBe('PROTOCOL_ERROR');
+        expect(errorData.payload.code).toBe('PROTOCOL_ERROR');
       }
     });
 

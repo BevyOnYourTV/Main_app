@@ -28,7 +28,7 @@ export class ZodWsValidationPipe<T extends z.ZodType> implements PipeTransform<u
     return {
       v: PROTOCOL_VERSION,
       timestamp: Date.now(),
-      error: {
+      payload: {
         code: isVersionError ? 'PROTOCOL_ERROR' : 'INVALID_PAYLOAD',
         message: isVersionError
           ? 'Invalid or unsupported protocol version'

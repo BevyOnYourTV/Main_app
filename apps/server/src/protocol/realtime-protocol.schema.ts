@@ -1,14 +1,68 @@
 import { z } from 'zod';
-import {
-  controllerLayoutSchema,
-  controllerOutboundSchema,
-  playerSchema,
-  screenOutboundSchema,
-} from '@platform/sdk';
+
+// Keep the wire-level SDK shapes local to the server. The SDK package currently
+// exports TypeScript source with extensionless ESM imports, which Node cannot
+// load directly from this NestJS application at runtime.
+const idSchema = z.string().min(1).max(64);
+const labelSchema = z.string().min(1).max(80);
+export const playerSchema = z.object({
+  id: idSchema,
+  name: z.string().min(1).max(32),
+  avatar: z.string().max(64).optional(),
+});
+
+const controllerComponentSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('button'), id: idSchema, label: labelSchema }),
+  z.object({ kind: z.literal('dpad'), id: idSchema, label: labelSchema }),
+  z.object({
+    kind: z.literal('choice'),
+    id: idSchema,
+    label: labelSchema,
+    options: z.array(z.object({ id: idSchema, label: labelSchema })).min(2).max(8),
+  }),
+]);
+
+export const controllerLayoutSchema = z.object({
+  components: z.array(controllerComponentSchema).min(1).max(16).refine(
+    (components) => new Set(components.map(({ id }) => id)).size === components.length,
+    { message: 'Component ids must be unique' },
+  ),
+});
+
+const controllerActionSchema = z.object({
+  componentId: idSchema,
+  value: z.discriminatedUnion('kind', [
+    z.object({ kind: z.literal('button'), pressed: z.boolean() }),
+    z.object({ kind: z.literal('dpad'), direction: z.enum(['up', 'down', 'left', 'right', 'none']) }),
+    z.object({ kind: z.literal('choice'), optionId: idSchema }),
+  ]),
+});
+
+const controllerOutboundSchema = z.object({
+  type: z.literal('action'),
+  action: controllerActionSchema,
+});
+
+const screenOutboundSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('ready') }),
+  z.object({ type: z.literal('pong'), id: z.number().int() }),
+  z.object({
+    type: z.literal('set-controller'),
+    layout: controllerLayoutSchema,
+    playerId: idSchema.optional(),
+  }),
+  z.object({ type: z.literal('private'), playerId: idSchema, data: z.json() }),
+  z.object({ type: z.literal('lifecycle'), phase: z.enum(['start', 'pause', 'resume', 'end']) }),
+  z.object({ type: z.literal('score'), playerId: idSchema, points: z.number().int() }),
+]);
+
+export type Player = z.infer<typeof playerSchema>;
+export type ControllerLayout = z.infer<typeof controllerLayoutSchema>;
+export type ControllerAction = z.infer<typeof controllerActionSchema>;
+export type ScreenOutbound = z.infer<typeof screenOutboundSchema>;
 
 export const PROTOCOL_VERSION = 0.1;
 const MAX_PLAYERS_PER_ROOM = 8;
-const idSchema = z.string().min(1).max(64);
 const roomCodeSchema = z
   .string()
   .trim()
@@ -29,7 +83,7 @@ export function createEnvelopeSchema<T extends z.ZodTypeAny>(payloadSchema: T) {
 
 // Client -> server. Socket.IO event names are the keys in these schema maps.
 export const realtimeClientPayloadSchemas = {
-  'session:hello': z.object({ role: z.enum(['console', 'controller', 'game']) }),
+  'session:hello': z.object({ role: z.enum(['console', 'controller']) }),
   'room:create': z.object({}),
   'room:join': z.object({
     roomCode: roomCodeSchema,
@@ -48,7 +102,7 @@ export const realtimeClientPayloadSchemas = {
 // Server -> client. Route game:private only to the addressed player's socket.
 export const realtimeServerPayloadSchemas = {
   'session:ready': z.object({
-    role: z.enum(['console', 'controller', 'game']),
+    role: z.enum(['console', 'controller']),
     sessionToken: z.string().min(10).max(256),
     playerId: idSchema.optional(),
   }),
@@ -64,12 +118,24 @@ export const realtimeServerPayloadSchemas = {
     hostId: idSchema,
     players: playerListSchema,
     gameId: idSchema.optional(),
-    status: z.enum(['waiting', 'playing', 'finished']),
+    status: z.enum(['waiting', 'playing', 'paused', 'finished']),
   }),
   'player:joined': z.object({ player: playerSchema }),
   'player:left': z.object({ playerId: idSchema }),
+  'player:action': z.object({
+    playerId: idSchema,
+    action: z.object({
+      componentId: idSchema,
+      value: z.discriminatedUnion('kind', [
+        z.object({ kind: z.literal('button'), pressed: z.boolean() }),
+        z.object({ kind: z.literal('dpad'), direction: z.enum(['up', 'down', 'left', 'right', 'none']) }),
+        z.object({ kind: z.literal('choice'), optionId: idSchema }),
+      ]),
+    }),
+  }),
   'host:changed': z.object({ hostId: idSchema }),
   'game:started': z.object({ gameId: idSchema }),
+  'game:paused': z.object({ gameId: idSchema.optional() }),
   'game:ended': z.object({ gameId: idSchema.optional() }),
   'game:layout': z.object({
     layout: controllerLayoutSchema,
@@ -113,8 +179,10 @@ export const realtimeServerSchemas = {
   'room:state': createEnvelopeSchema(realtimeServerPayloadSchemas['room:state']),
   'player:joined': createEnvelopeSchema(realtimeServerPayloadSchemas['player:joined']),
   'player:left': createEnvelopeSchema(realtimeServerPayloadSchemas['player:left']),
+  'player:action': createEnvelopeSchema(realtimeServerPayloadSchemas['player:action']),
   'host:changed': createEnvelopeSchema(realtimeServerPayloadSchemas['host:changed']),
   'game:started': createEnvelopeSchema(realtimeServerPayloadSchemas['game:started']),
+  'game:paused': createEnvelopeSchema(realtimeServerPayloadSchemas['game:paused']),
   'game:ended': createEnvelopeSchema(realtimeServerPayloadSchemas['game:ended']),
   'game:layout': createEnvelopeSchema(realtimeServerPayloadSchemas['game:layout']),
   'game:private': createEnvelopeSchema(realtimeServerPayloadSchemas['game:private']),
@@ -146,11 +214,7 @@ export const reconnectSessionEnvelopeSchema = realtimeClientSchemas['session:rec
 export const sdkScreenEnvelopeSchema = realtimeClientSchemas['game:message'];
 export const sdkControllerEnvelopeSchema = realtimeClientSchemas['game:input'];
 
-export const serverErrorSchema = z.object({
-  v: z.literal(PROTOCOL_VERSION),
-  timestamp: z.number().int().positive(),
-  error: realtimeServerPayloadSchemas.error,
-});
+export const serverErrorSchema = realtimeServerSchemas.error;
 
 export type CreateRoomEnvelope = z.infer<typeof createRoomEnvelopeSchema>;
 export type JoinRoomEnvelope = z.infer<typeof joinRoomEnvelopeSchema>;
