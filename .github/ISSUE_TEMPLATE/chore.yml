@@ -1,0 +1,29 @@
+name: Chore
+description: Request maintenance or housekeeping work
+title: "[Chore]: "
+labels:
+  - chore
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Describe the maintenance work that needs to be completed.
+    validations:
+      required: true
+
+  - type: textarea
+    id: completion
+    attributes:
+      label: Completion criteria
+      description: List what must be done for this chore to be considered complete.
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional notes
+      description: Add any useful context, dependencies, or references.
+    validations:
+      required: false
