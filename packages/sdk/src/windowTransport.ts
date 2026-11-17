@@ -1,4 +1,4 @@
-import type { Transport } from './transport'
+import type { Transport } from './transport.ts'
 
 export type MessageTarget = {
   postMessage(message: unknown, targetOrigin: string): void

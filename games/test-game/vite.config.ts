@@ -1,8 +1,12 @@
 import { resolve } from 'node:path'
-import { defineConfig } from 'vite'
+import { defaultClientConditions, defineConfig } from 'vite'
 
 // A classic script: in a sandboxed iframe, module scripts would need CORS.
 export default defineConfig({
+  resolve: {
+    // Read workspace packages from their sources (ADR-0002).
+    conditions: ['source', ...defaultClientConditions],
+  },
   build: {
     emptyOutDir: true,
     lib: {
