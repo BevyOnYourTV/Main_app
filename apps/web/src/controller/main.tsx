@@ -1,7 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import '../shared/styles/tailwind.css'
-import { ControllerPage } from './pages/ControllerPage'
+import { ControllerRouter } from './router'
 
 const rootElement = document.getElementById('root')
 
@@ -11,6 +11,6 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <ControllerPage />
+    <ControllerRouter />
   </StrictMode>,
 )
