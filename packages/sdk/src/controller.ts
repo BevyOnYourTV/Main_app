@@ -1,4 +1,4 @@
-import { createEmitter } from './emitter'
+import { createEmitter } from './emitter.ts'
 import {
   controllerInboundSchema,
   type ActionValue,
@@ -6,10 +6,10 @@ import {
   type ControllerLayout,
   type ControllerOutbound,
   type PrivateData,
-} from './protocol'
-import { reportProtocolError, type SdkOptions } from './screen'
-import type { Transport, Unsubscribe } from './transport'
-import { validateAction, type ValidationResult } from './validation'
+} from './protocol.ts'
+import { reportProtocolError, type SdkOptions } from './screen.ts'
+import type { Transport, Unsubscribe } from './transport.ts'
+import { validateAction, type ValidationResult } from './validation.ts'
 
 export type ControllerSdk = {
   dispose: () => void

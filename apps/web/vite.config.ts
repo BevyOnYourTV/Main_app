@@ -1,7 +1,7 @@
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { resolve } from 'node:path'
-import { defineConfig } from 'vite'
+import { defaultClientConditions, defineConfig } from 'vite'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -9,6 +9,8 @@ export default defineConfig({
     alias: {
       '@': resolve(import.meta.dirname, 'src'),
     },
+    // Read workspace packages from their sources (ADR-0002).
+    conditions: ['source', ...defaultClientConditions],
   },
   build: {
     rollupOptions: {

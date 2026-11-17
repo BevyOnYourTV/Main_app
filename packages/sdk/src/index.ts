@@ -1,31 +1,31 @@
-export { createControllerSdk, type ControllerSdk } from './controller'
-export { createEmitter, type Emitter } from './emitter'
+export { createControllerSdk, type ControllerSdk } from './controller.ts'
+export { createEmitter, type Emitter } from './emitter.ts'
 export {
   gameManifestSchema,
   MAX_PLAYERS_PER_ROOM,
   parseGameManifest,
   type GameManifest,
-} from './manifest'
-export * from './protocol'
+} from './manifest.ts'
+export * from './protocol.ts'
 export {
   createScreenSdk,
   type PlayerAction,
   type ProtocolErrorHandler,
   type ScreenSdk,
   type SdkOptions,
-} from './screen'
+} from './screen.ts'
 export {
   createMemoryTransportPair,
   type Transport,
   type Unsubscribe,
-} from './transport'
+} from './transport.ts'
 export {
   createWindowTransport,
   type MessageHost,
   type MessageTarget,
-} from './windowTransport'
+} from './windowTransport.ts'
 export {
   validateAction,
   type ActionValidator,
   type ValidationResult,
-} from './validation'
+} from './validation.ts'
