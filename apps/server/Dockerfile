@@ -11,6 +11,7 @@ COPY packages/simulator/package.json ./packages/simulator/package.json
 
 RUN npm ci
 
+
 FROM dependencies AS development
 
 COPY apps/server ./apps/server
