@@ -1,0 +1,21 @@
+services:
+
+  server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+      target: development
+    image: bevyonyourtv-server:dev
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      LOG_LEVEL: debug
+      CLIENT_ORIGINS: ${CLIENT_ORIGINS:-}
+      ENABLE_REALTIME_TESTER: ${ENABLE_REALTIME_TESTER:-true}
+    ports:
+      - "${SERVER_PORT:-3000}:3000"
+      - "${DEBUG_PORT:-9229}:9229"
+    volumes:
+      - ./apps/server:/app/apps/server
+      - ./packages/sdk:/app/packages/sdk
