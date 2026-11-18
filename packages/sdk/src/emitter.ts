@@ -1,4 +1,4 @@
-import type { Unsubscribe } from './transport'
+import type { Unsubscribe } from './transport.ts'
 
 export type Emitter<Event> = {
   emit: (event: Event) => void

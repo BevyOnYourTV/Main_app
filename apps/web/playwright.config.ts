@@ -39,7 +39,8 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      /* Full Chromium: the default headless shell runs iframes in the page's process, unlike Chrome. */
+      use: { ...devices['Desktop Chrome'], channel: 'chromium' },
     },
 
     {

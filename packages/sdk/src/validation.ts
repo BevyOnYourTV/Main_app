@@ -1,4 +1,4 @@
-import type { ControllerAction, ControllerLayout } from './protocol'
+import type { ControllerAction, ControllerLayout } from './protocol.ts'
 
 export type ValidationResult =
   | { ok: true }
