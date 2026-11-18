@@ -4,10 +4,14 @@
   "version": "0.0.0",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
   },
   "scripts": {
-    "build": "tsc --noEmit",
+    "build": "tsc --noEmit && tsc -p tsconfig.build.json",
     "lint": "eslint .",
     "test": "vitest run"
   },

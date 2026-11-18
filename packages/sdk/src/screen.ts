@@ -1,4 +1,4 @@
-import { createEmitter } from './emitter'
+import { createEmitter } from './emitter.ts'
 import {
   controllerLayoutSchema,
   screenInboundSchema,
@@ -8,8 +8,8 @@ import {
   type PrivateData,
   type ScreenInbound,
   type ScreenOutbound,
-} from './protocol'
-import type { Transport, Unsubscribe } from './transport'
+} from './protocol.ts'
+import type { Transport, Unsubscribe } from './transport.ts'
 
 export type ProtocolErrorHandler = (error: Error, message: unknown) => void
 
