@@ -160,7 +160,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     if (socket.data.role !== 'controller') return this.sendError(socket, 'error', 'UNAUTHORIZED', 'Only a controller can join as a player');
 
     const room = this.rooms.get(parsed.payload.roomCode);
-    if (!room) return this.sendError(socket, 'error', 'ROOM_NOT_FOUND', 'Room not found');
+    if (!room) return this.sendError(socket, ' error', 'ROOM_NOT_FOUND', 'Room not found');
     if (room.players.size >= MAX_PLAYERS) return this.sendError(socket, 'error', 'ROOM_FULL', 'Room is full');
     this.leaveRoom(socket);
 
