@@ -24,7 +24,7 @@ The server listens on port `3000` by default. Set `PORT` to change it. `CLIENT_O
 From `Main_app/`, start the development server with file watching, the Node inspector, and debug logs:
 
 ```bash
-docker compose -f docker-compose.dev.yml up --build
+docker compose -f docker-compose.dev.yml up --buildn  
 ```
 
 The dev server is available on `http://localhost:3000`, with the inspector on port `9229`. Source changes reload automatically. Override `SERVER_PORT`, `DEBUG_PORT`, or `CLIENT_ORIGINS` as needed. The development tester is enabled by default in this configuration. Stop it with `docker compose -f docker-compose.dev.yml down`.

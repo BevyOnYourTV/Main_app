@@ -30,6 +30,19 @@ npm run dev
 
 Vite prints the local development URL after the server starts.
 
+### Run the realtime server
+
+With Node.js 24, from the repository root:
+
+```bash
+npm install
+cp .env.example .env
+npm run build --workspace @platform/sdk
+npm run start:dev --workspace server
+```
+
+The server uses port `3000` for HTTP and Socket.IO (`/realtime`). Development debugging uses port `9229`. See the [server configuration and ports](apps/server/README.md#environment-and-ports) for `.env` variables and Docker host port mappings.
+
 ### Available checks
 
 From `apps/web`:

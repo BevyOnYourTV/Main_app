@@ -28,7 +28,7 @@ Do not claim an issue is fixed, a protocol is compatible, or a scenario is cover
 
 - This is a NestJS 12, TypeScript, ESM, Socket.IO server. Follow the existing patterns before adding dependencies or introducing another abstraction.
 - Relative TypeScript imports include the `.js` extension. Tests use Vitest (`vi`), not Jest.
-- Treat every client event as untrusted. Validate its versioned envelope and payload with the local Zod schemas before using it.
+- Treat every client event as untrusted. Validate its versioned envelope and payload with the server event schemas and shared SDK schemas before using it.
 - The server owns session identity, room membership, host authority, game status, and player identity. Derive permissions from authenticated socket state and server state; never trust client-supplied role, host, player, or room claims without checking them.
 - Keep all wire events versioned with the established envelope (`v`, `timestamp`, `payload`). When changing a wire shape or event, update both directions as applicable, the relevant tests, and the connection documentation.
 - Preserve the public event names and payload shapes unless the request explicitly calls for a protocol change. Check the SDK contract before changing compatibility-sensitive behavior.
@@ -43,9 +43,9 @@ Do not claim an issue is fixed, a protocol is compatible, or a scenario is cover
 | `src/main.ts` | Nest bootstrap, HTTP port, and log level configuration. |
 | `src/app.module.ts` | Registers the HTTP controller, realtime gateway, and optional development tester. |
 | `src/realtime/realtime.gateway.ts` | Socket.IO namespace `/realtime`; authentication, reconnects, rooms, player membership, game lifecycle, routing, and server-side in-memory state. |
-| `src/protocol/realtime-protocol.schema.ts` | Versioned client/server event payload schemas and protocol types. These wire-level schemas are kept local to the server because the SDK's TypeScript source currently has extensionless ESM imports that Node cannot load directly here. |
+| `src/protocol/realtime-protocol.schema.ts` | Versioned Socket.IO envelopes, event payload maps, and server error schemas. Shared SDK message schemas and types are imported from `@platform/sdk`. |
 | `src/protocol/zod-ws-validation.pipe.ts` | Converts Zod validation failures into the established websocket error response. |
-| `src/protocol/action-validation.ts` | Checks controller actions against the active controller layout. |
+| `@platform/sdk` `validateAction` | Checks controller actions against the active controller layout. |
 | `src/dev/realtime-tester.controller.ts` | Optional browser-based console/controller tester. |
 | `src/realtime/realtime.gateway.spec.ts` | Gateway lifecycle, authorization, routing, and state behavior tests. |
 | `src/protocol/realtime-protocol.spec.ts` | Protocol schema and action validation tests. |
@@ -62,7 +62,7 @@ Typical event flow: a client sends a versioned event to the `/realtime` namespac
 | Authentication, reconnect, or session expiry | Gateway handshake/disconnect/reconnect paths, session tests, and lifecycle docs. Never expose session tokens in logs. |
 | Room membership, capacity, host changes, or kick/leave | Gateway room state and broadcasts, authorization checks, gateway specs, and lifecycle docs. |
 | Game start/status or message routing | Gateway game-state checks and recipient selection, protocol schemas, gateway specs, and lifecycle docs. |
-| Layout or controller action validation | Protocol schemas, `action-validation.ts`, gateway input path, protocol/gateway specs, and the tester if its controls are affected. |
+| Layout or controller action validation | SDK protocol schemas and `validateAction`, gateway input path, protocol/gateway specs, and the tester if its controls are affected. |
 | Tester page or availability | `src/dev/realtime-tester.controller.ts`, conditional registration in `src/app.module.ts`, and README setup instructions. Keep it disabled by default. |
 | Startup, configuration, or log levels | `src/main.ts`, relevant module behavior, and README configuration. |
 

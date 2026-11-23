@@ -12,7 +12,7 @@ import { randomInt, randomUUID } from 'node:crypto';
 import { Namespace, Socket } from 'socket.io';
 import { z } from 'zod';
 import type { ControllerLayout, Player, ScreenOutbound } from '../protocol/realtime-protocol.schema.js';
-import { validateAction } from '../protocol/action-validation.js';
+import { validateAction } from '@platform/sdk';
 import {
   PROTOCOL_VERSION,
   realtimeClientSchemas,
@@ -55,7 +55,9 @@ const CLIENT_EVENTS = new Set<string>([
 @WebSocketGateway({
   namespace: '/realtime',
   cors: {
-    origin: process.env.CLIENT_ORIGINS?.split(',').map((origin) => origin.trim()) ?? true,
+    origin: process.env.CLIENT_ORIGINS?.trim()
+      ? process.env.CLIENT_ORIGINS.split(',').map((origin) => origin.trim()).filter(Boolean)
+      : true,
     credentials: true,
   },
   maxHttpBufferSize: 64 * 1024,
@@ -160,7 +162,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     if (socket.data.role !== 'controller') return this.sendError(socket, 'error', 'UNAUTHORIZED', 'Only a controller can join as a player');
 
     const room = this.rooms.get(parsed.payload.roomCode);
-    if (!room) return this.sendError(socket, ' error', 'ROOM_NOT_FOUND', 'Room not found');
+    if (!room) return this.sendError(socket, 'error', 'ROOM_NOT_FOUND', 'Room not found');
     if (room.players.size >= MAX_PLAYERS) return this.sendError(socket, 'error', 'ROOM_FULL', 'Room is full');
     this.leaveRoom(socket);
 

@@ -20,14 +20,15 @@ COPY packages/sdk ./packages/sdk
 ENV NODE_ENV=development
 ENV PORT=3000
 EXPOSE 3000 9229
-CMD ["npm", "run", "start:debug", "--workspace", "server"]
+CMD ["sh", "-c", "npm run build --workspace @platform/sdk && npm run start:debug --workspace server -- --debug 0.0.0.0:9229"]
 
 FROM dependencies AS build
 
 COPY apps/server ./apps/server
 COPY packages/sdk ./packages/sdk
 
-RUN npm run build --workspace server \
+RUN npm run build --workspace @platform/sdk \
+    && npm run build --workspace server \
     && npm prune --omit=dev --workspace server
 
 FROM node:24-alpine AS runtime
@@ -41,6 +42,7 @@ COPY --from=build --chown=node:node /app/apps/server/package.json ./apps/server/
 COPY --from=build --chown=node:node /app/apps/server/dist ./apps/server/dist
 # npm workspaces link the SDK into node_modules; keep its target in the image.
 COPY --from=build --chown=node:node /app/packages/sdk/package.json ./packages/sdk/package.json
+COPY --from=build --chown=node:node /app/packages/sdk/dist ./packages/sdk/dist
 
 USER node
 EXPOSE 3000

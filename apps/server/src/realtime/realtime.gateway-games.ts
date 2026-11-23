@@ -1,5 +1,5 @@
 import { Socket } from 'socket.io';
-import { validateAction } from '../protocol/action-validation.js';
+import { validateAction } from '@platform/sdk';
 import { type ClientSocket } from './realtime.types.js';
 import { RealtimeGatewayRooms } from './realtime.gateway-rooms.js';
 import { RealtimeGameRouter } from './realtime.game-router.js';

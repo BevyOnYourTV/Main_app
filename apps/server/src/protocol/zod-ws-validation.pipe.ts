@@ -1,7 +1,7 @@
 import { PipeTransform, Injectable } from '@nestjs/common';
 import { WsException } from '@nestjs/websockets';
 import { z, type ZodError } from 'zod';
-import { PROTOCOL_VERSION, type ServerError } from './realtime-protocol.schema';
+import { PROTOCOL_VERSION, type ServerError } from './realtime-protocol.schema.js';
 
 @Injectable()
 export class ZodWsValidationPipe<T extends z.ZodType> implements PipeTransform<unknown, z.infer<T>> {

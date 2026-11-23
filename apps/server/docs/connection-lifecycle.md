@@ -6,6 +6,7 @@ This document describes the current server-side connection flow for a console ho
 
 - Socket.IO namespace: `/realtime`
 - Local server URL: `http://localhost:3000/realtime`
+- HTTP and Socket.IO share port `3000` by default. Use `PORT` for npm launches or `SERVER_PORT` for the Docker host port. The development Node inspector uses a separate port, `9229`; see [environment and ports](../README.md#environment-and-ports).
 - Protocol envelope: `{ v: 0.1, timestamp: number, payload: ... }`
 - Every timestamp is a Unix time in milliseconds (`Date.now()`).
 - All client events must use the envelope and must be sent after role assignment, except `session:hello` and `session:reconnect`.
