@@ -213,7 +213,7 @@ describe('[B01] Versioned Real-Time Protocol Validation', () => {
     it('validates lobby, player, layout, private, score, error, and pong server messages', () => {
       const player = { id: 'p1', name: 'Guest' };
       expect(parseRealtimeServerMessage('room:state', envelope({
-        roomCode: 'ABCD', hostId: 'p1', players: [player], status: 'waiting',
+        roomCode: 'ABCD', hostId: 'p1', masterControllerId: 'p1', players: [player], status: 'waiting',
       })).success).toBe(true);
       expect(parseRealtimeServerMessage('player:joined', envelope({ player })).success).toBe(true);
       expect(parseRealtimeServerMessage('game:layout', envelope({

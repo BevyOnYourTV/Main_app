@@ -21,7 +21,8 @@ export {
 export type { ControllerAction, ControllerLayout, Player, ScreenOutbound };
 
 const idSchema = z.string().min(1).max(64);
-export const PROTOCOL_VERSION = 0.1;
+const controllerCommandSchema = z.enum(['up', 'down', 'left', 'right', 'confirm', 'back']);
+export const PROTOCOL_VERSION = 0.2;
 const MAX_PLAYERS_PER_ROOM = 8;
 const roomCodeSchema = z
   .string()
@@ -56,6 +57,8 @@ export const realtimeClientPayloadSchemas = {
   'game:start': z.object({ gameId: idSchema }),
   'game:input': controllerOutboundSchema,
   'game:message': screenOutboundSchema,
+  'controller:command': z.object({ command: controllerCommandSchema }),
+  'controller:game-control': z.object({ action: z.enum(['pause', 'resume', 'stop']) }),
   ping: z.object({ id: z.number().int().nonnegative() }),
 } as const;
 
@@ -71,11 +74,13 @@ export const realtimeServerPayloadSchemas = {
     roomCode: roomCodeSchema,
     playerId: idSchema,
     hostId: idSchema,
+    masterControllerId: idSchema.nullable(),
     players: playerListSchema,
   }),
   'room:state': z.object({
     roomCode: roomCodeSchema,
     hostId: idSchema,
+    masterControllerId: idSchema.nullable(),
     players: playerListSchema,
     gameId: idSchema.optional(),
     status: z.enum(['waiting', 'playing', 'paused', 'finished']),
@@ -85,6 +90,10 @@ export const realtimeServerPayloadSchemas = {
   'player:action': z.object({
     playerId: idSchema,
     action: controllerActionSchema,
+  }),
+  'screen:command': z.object({
+    controllerId: idSchema,
+    command: controllerCommandSchema,
   }),
   'host:changed': z.object({ hostId: idSchema }),
   'game:started': z.object({ gameId: idSchema }),
@@ -122,6 +131,8 @@ export const realtimeClientSchemas = {
   'game:start': createEnvelopeSchema(realtimeClientPayloadSchemas['game:start']),
   'game:input': createEnvelopeSchema(realtimeClientPayloadSchemas['game:input']),
   'game:message': createEnvelopeSchema(realtimeClientPayloadSchemas['game:message']),
+  'controller:command': createEnvelopeSchema(realtimeClientPayloadSchemas['controller:command']),
+  'controller:game-control': createEnvelopeSchema(realtimeClientPayloadSchemas['controller:game-control']),
   ping: createEnvelopeSchema(realtimeClientPayloadSchemas.ping),
 } as const;
 
@@ -133,6 +144,7 @@ export const realtimeServerSchemas = {
   'player:joined': createEnvelopeSchema(realtimeServerPayloadSchemas['player:joined']),
   'player:left': createEnvelopeSchema(realtimeServerPayloadSchemas['player:left']),
   'player:action': createEnvelopeSchema(realtimeServerPayloadSchemas['player:action']),
+  'screen:command': createEnvelopeSchema(realtimeServerPayloadSchemas['screen:command']),
   'host:changed': createEnvelopeSchema(realtimeServerPayloadSchemas['host:changed']),
   'game:started': createEnvelopeSchema(realtimeServerPayloadSchemas['game:started']),
   'game:paused': createEnvelopeSchema(realtimeServerPayloadSchemas['game:paused']),

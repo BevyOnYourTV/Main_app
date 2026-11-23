@@ -1,9 +1,9 @@
 # Realtime server
 
-NestJS + Socket.IO server for the console, mobile controllers and games. The Socket.IO namespace is `/realtime`. All application events use the B01 envelope:
+NestJS + Socket.IO server for the console, mobile controllers and games. The Socket.IO namespace is `/realtime`. All application events use the version `0.2` envelope:
 
 ```ts
-type Envelope<T> = { v: 0.1; timestamp: number; payload: T }
+type Envelope<T> = { v: 0.2; timestamp: number; payload: T }
 ```
 
 Server validation schemas and inferred event types live in `src/protocol/realtime-protocol.schema.ts`. Their controller action, layout, player and game message constraints mirror the SDK wire shapes. They are defined locally so Node can load the NestJS runtime without trying to execute the SDK's extensionless TypeScript source imports.
@@ -43,7 +43,7 @@ For a small browser-based test page, enable it explicitly when starting the serv
 ENABLE_REALTIME_TESTER=true npm run start:dev --workspace server
 ```
 
-Then open `http://localhost:3000/dev/realtime-tester`. It simulates a console and one controller and provides buttons for room creation/join, game start, controller layout, input, ping and session reconnection. The route is not registered unless the environment variable is enabled.
+Then open `http://localhost:3000/dev/realtime-tester`. It simulates a console and controllers and provides buttons for room creation/join, menu commands, game start, pause/resume/stop, player removal, controller layout, input, ping and session reconnection. The route is not registered unless the environment variable is enabled.
 
 See [the full connection lifecycle guide](./docs/connection-lifecycle.md) for the host and one/two-controller event sequence, payloads, game messaging, and reconnection flow.
 
@@ -55,14 +55,14 @@ import { io } from 'socket.io-client'
 const socket = io('http://localhost:3000/realtime')
 socket.on('session:ready', ({ payload }) => {
   sessionStorage.setItem('sessionToken', payload.sessionToken)
-  socket.emit('room:create', { v: 0.1, timestamp: Date.now(), payload: {} })
+  socket.emit('room:create', { v: 0.2, timestamp: Date.now(), payload: {} })
 })
 socket.on('room:created', ({ payload }) => console.log(payload.roomCode))
 socket.on('room:state', ({ payload }) => renderLobby(payload))
 socket.on('player:action', ({ payload }) => handleGameAction(payload.playerId, payload.action))
 socket.on('error', ({ payload }) => showServerError(payload))
 socket.on('connect', () => {
-  socket.emit('session:hello', { v: 0.1, timestamp: Date.now(), payload: { role: 'console' } })
+  socket.emit('session:hello', { v: 0.2, timestamp: Date.now(), payload: { role: 'console' } })
 })
 ```
 
@@ -72,7 +72,7 @@ After connecting, send `session:hello` with role `controller`. Once `session:rea
 
 ```ts
 socket.emit('room:join', {
-  v: 0.1,
+  v: 0.2,
   timestamp: Date.now(),
   payload: { roomCode: 'AB12CD', nickname: 'Alex' },
 })
@@ -86,7 +86,7 @@ Controller actions use the SDK's existing `ControllerOutbound` shape:
 
 ```ts
 socket.emit('game:input', {
-  v: 0.1,
+  v: 0.2,
   timestamp: Date.now(),
   payload: { type: 'action', action: { componentId: 'jump', value: { kind: 'button', pressed: true } } },
 })
@@ -98,10 +98,12 @@ socket.emit('game:input', {
 |---|---|---|
 | Client → server | `session:hello` | Declare this connection's `console` or `controller` role; send before other events. This is a role handshake, not account authentication. |
 | Server → client | `session:ready` | Confirms the assigned role and returns a resumable session token. |
-| Client → server | `room:create`, `room:join`, `room:leave`, `room:kick` | Create and manage the in-memory lobby. |
+| Client → server | `room:create`, `room:join`, `room:leave`, `room:kick` | Create and manage the in-memory lobby. The screen host and current master controller may kick players. |
 | Server → clients | `room:created`, `room:joined`, `room:state`, `player:joined`, `player:left`, `host:changed` | Lobby snapshots and changes. |
-| Client → server | `game:start` | Host starts a game by id. |
+| Client → server | `game:start` | Screen host or master controller starts a game by id. |
+| Master controller → server | `controller:game-control` | Pause, resume, or stop the active game. The server broadcasts the existing lifecycle events and room state. |
 | Controller → server → host | `game:input` → `player:action` | Validated controller action, checked against the active layout. |
+| Master controller → server → screen host | `controller:command` → `screen:command` | Allowlisted menu command (`up`, `down`, `left`, `right`, `confirm`, `back`). |
 | Host → server → controllers | `game:message` → `game:layout`, `game:private`, `game:score`, `game:started`, `game:paused`, `game:ended` | SDK screen messages routed to the room or one player. |
 | Client → server → client | `ping` → `pong` | Round-trip latency measurement. |
 | Server → client | `error` | Versioned error code and safe validation details. |

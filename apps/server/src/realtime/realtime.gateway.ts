@@ -36,6 +36,7 @@ type Room = {
   code: string;
   hostId: string;
   hostSocketId: string;
+  masterControllerId?: string;
   players: Map<string, RoomPlayer>;
   status: RoomStatus;
   gameId?: string;
@@ -48,7 +49,7 @@ const MAX_PLAYERS = 8;
 const DISCONNECT_GRACE_MS = 30_000;
 const CLIENT_EVENTS = new Set<string>([
   'session:hello', 'session:reconnect', 'room:create', 'room:join', 'room:leave',
-  'room:kick', 'game:start', 'game:input', 'game:message', 'ping',
+  'room:kick', 'game:start', 'game:input', 'game:message', 'controller:command', 'controller:game-control', 'ping',
 ]);
 
 @Injectable()
@@ -174,6 +175,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     };
     if (!player.name) return this.sendError(socket, 'error', 'INVALID_PAYLOAD', 'Nickname is empty after filtering');
     room.players.set(player.id, player);
+    if (!room.masterControllerId) room.masterControllerId = player.id;
     socket.data.roomCode = room.code;
     socket.data.playerId = player.id;
     void socket.join(room.code);
@@ -182,6 +184,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       roomCode: room.code,
       playerId: player.id,
       hostId: room.hostId,
+      masterControllerId: room.masterControllerId ?? null,
       players: this.publicPlayers(room),
     });
     socket.to(room.code).emit('player:joined', this.envelope('player:joined', { player: this.publicPlayer(player) }));
@@ -259,10 +262,13 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     const socket = client as ClientSocket;
     const parsed = this.parseClientEvent(socket, 'room:kick', input);
     if (!parsed) return;
-    const room = this.roomForHost(socket);
-    if (!room) return this.sendError(socket, 'error', 'UNAUTHORIZED', 'Only the room host can remove a player');
+    const room = this.roomForManager(socket);
+    if (!room) return this.sendError(socket, 'error', 'UNAUTHORIZED', 'Only the screen host or master controller can remove a player');
     const player = room.players.get(parsed.payload.playerId);
     if (!player) return this.sendError(socket, 'error', 'ROOM_NOT_FOUND', 'Player not found');
+    if (player.socketId === room.hostSocketId) {
+      return this.sendError(socket, 'error', 'CONFLICT', 'The current screen host cannot be removed from the room');
+    }
     const target = this.server.sockets.get(player.socketId) as ClientSocket | undefined;
     if (target) {
       target.data.roomCode = undefined;
@@ -271,6 +277,10 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       this.sendError(target, 'error', 'UNAUTHORIZED', 'You were removed from the room');
     }
     room.players.delete(player.id);
+    room.playerLayouts.delete(player.id);
+    if (room.masterControllerId === player.id) {
+      room.masterControllerId = room.players.keys().next().value;
+    }
     this.server.to(room.code).emit('player:left', this.envelope('player:left', { playerId: player.id }));
     this.broadcastRoomState(room);
     this.logger.warn(`Player kicked room=${room.code} player=${player.id} by=${this.socketTag(socket.id)} remaining=${room.players.size}`);
@@ -281,13 +291,67 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     const socket = client as ClientSocket;
     const parsed = this.parseClientEvent(socket, 'game:start', input);
     if (!parsed) return;
-    const room = this.roomForHost(socket);
-    if (!room) return this.sendError(socket, 'error', 'UNAUTHORIZED', 'Only the room host can start a game');
+    const room = this.roomForManager(socket);
+    if (!room) return this.sendError(socket, 'error', 'UNAUTHORIZED', 'Only the screen host or master controller can start a game');
     room.gameId = parsed.payload.gameId;
     room.status = 'playing';
     this.server.to(room.code).emit('game:started', this.envelope('game:started', { gameId: room.gameId }));
     this.broadcastRoomState(room);
     this.logger.debug(`Game started room=${room.code} game=${room.gameId} players=${room.players.size}`);
+  }
+
+  @SubscribeMessage('controller:command')
+  handleControllerCommand(@ConnectedSocket() client: Socket, @MessageBody() input: unknown): void {
+    const socket = client as ClientSocket;
+    const parsed = this.parseClientEvent(socket, 'controller:command', input);
+    if (!parsed) return;
+    const room = this.roomForMasterController(socket);
+    if (!room || !socket.data.playerId) {
+      return this.sendError(socket, 'error', 'UNAUTHORIZED', 'Only the master controller can send screen commands');
+    }
+    const screenHost = this.server.sockets.get(room.hostSocketId);
+    if (!screenHost) return this.sendError(socket, 'error', 'CONFLICT', 'The screen host is not connected');
+    this.emit(screenHost, 'screen:command', {
+      controllerId: socket.data.playerId,
+      command: parsed.payload.command,
+    });
+  }
+
+  @SubscribeMessage('controller:game-control')
+  handleControllerGameControl(@ConnectedSocket() client: Socket, @MessageBody() input: unknown): void {
+    const socket = client as ClientSocket;
+    const parsed = this.parseClientEvent(socket, 'controller:game-control', input);
+    if (!parsed) return;
+    const room = this.roomForMasterController(socket);
+    if (!room) return this.sendError(socket, 'error', 'UNAUTHORIZED', 'Only the master controller can control the game lifecycle');
+
+    const { action } = parsed.payload;
+    if (action === 'pause') {
+      if (room.status !== 'playing' || !room.gameId) {
+        return this.sendError(socket, 'error', 'CONFLICT', 'Only a running game can be paused');
+      }
+      room.status = 'paused';
+      this.server.to(room.code).emit('game:paused', this.envelope('game:paused', { gameId: room.gameId }));
+      this.broadcastRoomState(room);
+      return;
+    }
+
+    if (action === 'resume') {
+      if (room.status !== 'paused' || !room.gameId) {
+        return this.sendError(socket, 'error', 'CONFLICT', 'Only a paused game can be resumed');
+      }
+      room.status = 'playing';
+      this.server.to(room.code).emit('game:started', this.envelope('game:started', { gameId: room.gameId }));
+      this.broadcastRoomState(room);
+      return;
+    }
+
+    if ((room.status !== 'playing' && room.status !== 'paused') || !room.gameId) {
+      return this.sendError(socket, 'error', 'CONFLICT', 'Only an active game can be stopped');
+    }
+    room.status = 'finished';
+    this.server.to(room.code).emit('game:ended', this.envelope('game:ended', { gameId: room.gameId }));
+    this.broadcastRoomState(room);
   }
 
   @SubscribeMessage('game:input')
@@ -418,9 +482,13 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     if (!room) return;
 
     const wasHost = room.hostSocketId === socket.id;
-    if (playerId !== room.hostId) {
+    const wasController = socket.data.role === 'controller';
+    if (wasController) {
       room.players.delete(playerId);
       room.playerLayouts.delete(playerId);
+      if (room.masterControllerId === playerId) {
+        room.masterControllerId = room.players.keys().next().value;
+      }
       this.server.to(room.code).emit('player:left', this.envelope('player:left', { playerId }));
       this.logger.debug(`Player left room=${room.code} player=${playerId} remaining=${room.players.size}`);
     }
@@ -429,7 +497,11 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       if (!nextHost) {
         this.rooms.delete(room.code);
         this.server.to(room.code).emit('room:state', this.envelope('room:state', {
-          roomCode: room.code, hostId: room.hostId, players: [], status: 'finished',
+          roomCode: room.code,
+          hostId: room.hostId,
+          masterControllerId: room.masterControllerId ?? null,
+          players: [],
+          status: 'finished',
         }));
         this.logger.debug(`Room closed after host departure room=${room.code}`);
         return;
@@ -452,10 +524,22 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     return room?.hostSocketId === socket.id ? room : undefined;
   }
 
+  private roomForMasterController(socket: ClientSocket): Room | undefined {
+    if (socket.data.role !== 'controller' || !socket.data.roomCode || !socket.data.playerId) return undefined;
+    const room = this.rooms.get(socket.data.roomCode);
+    if (!room || room.masterControllerId !== socket.data.playerId) return undefined;
+    return room.players.get(socket.data.playerId)?.socketId === socket.id ? room : undefined;
+  }
+
+  private roomForManager(socket: ClientSocket): Room | undefined {
+    return this.roomForHost(socket) ?? this.roomForMasterController(socket);
+  }
+
   private broadcastRoomState(room: Room): void {
     this.server.to(room.code).emit('room:state', this.envelope('room:state', {
       roomCode: room.code,
       hostId: room.hostId,
+      masterControllerId: room.masterControllerId ?? null,
       players: this.publicPlayers(room),
       ...(room.gameId ? { gameId: room.gameId } : {}),
       status: room.status,

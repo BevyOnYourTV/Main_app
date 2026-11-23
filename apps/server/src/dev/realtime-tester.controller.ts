@@ -95,7 +95,7 @@ export class RealtimeTesterController {
 <script>
 (() => {
   const namespaceUrl = location.origin + '/realtime';
-  const version = 0.1;
+  const version = 0.2;
   const MAX_LOG_ENTRIES = 300;
   const MAX_PLAYERS = 8;
   const params = new URLSearchParams(location.search);
@@ -225,13 +225,13 @@ export class RealtimeTesterController {
     });
     [
       'room:created', 'room:joined', 'room:state', 'player:joined', 'player:left', 'host:changed',
-      'player:action', 'game:started', 'game:paused', 'game:ended', 'game:layout', 'game:private', 'game:score', 'pong',
+      'player:action', 'screen:command', 'game:started', 'game:paused', 'game:ended', 'game:layout', 'game:private', 'game:score', 'pong',
     ].forEach(event => socket.on(event, message => {
       const payload = message && message.payload ? message.payload : {};
       write(label + ' received ' + event, payload);
       if (event === 'room:created') {
         roomCode.value = payload.roomCode || roomCode.value;
-        roomState = { roomCode: payload.roomCode, hostId: payload.hostId, players: [], status: 'waiting' };
+        roomState = { roomCode: payload.roomCode, hostId: payload.hostId, masterControllerId: null, players: [], status: 'waiting' };
         updateTargets();
         setStatus(hostStatusText, 'Connected · room ' + payload.roomCode, '');
       }
@@ -399,7 +399,8 @@ export class RealtimeTesterController {
       const heading = element('h3', '', controller.label);
       heading.id = 'controller-title-' + controller.id;
       title.append(heading);
-      const status = element('p', 'status', controller.status + (controller.connected ? ' · connected' : ' · offline') + (controller.playerId ? ' · player ' + controller.playerId : ''));
+      const isMasterController = Boolean(controller.playerId && roomState && roomState.masterControllerId === controller.playerId);
+      const status = element('p', 'status', controller.status + (controller.connected ? ' · connected' : ' · offline') + (controller.playerId ? ' · player ' + controller.playerId : '') + (isMasterController ? ' · master controller' : ''));
       status.id = 'controller-status-' + controller.id;
       title.append(status);
       head.append(title);
@@ -409,11 +410,28 @@ export class RealtimeTesterController {
       addActionButton(actions, 'Reconnect', () => reconnectController(controller));
       addActionButton(actions, 'Leave room', () => send(controller.socket, 'room:leave', {}, controller.label), 'secondary');
       addActionButton(actions, 'Test invalid action', () => sendControllerAction(controller, '__unknown_component__', { kind: 'button', pressed: true }), 'secondary');
-      addActionButton(actions, 'Try host-only game:start', () => send(controller.socket, 'game:start', { gameId: 'host-authority-test' }, controller.label), 'secondary');
-      addActionButton(actions, 'Try host-only room:kick', () => {
-        const target = currentPlayers().find(player => player.id !== controller.playerId);
-        send(controller.socket, 'room:kick', { playerId: target ? target.id : '__missing_player__' }, controller.label);
+      addActionButton(actions, 'Try master controller game:start', () => send(controller.socket, 'game:start', { gameId: 'master-controller-test' }, controller.label), 'secondary');
+      const kickTargets = currentPlayers().filter(player => player.id !== controller.playerId && player.id !== roomState?.hostId);
+      const kickTarget = document.createElement('select');
+      kickTarget.setAttribute('aria-label', 'Player to kick');
+      if (kickTargets.length) {
+        makeOption(kickTarget, '', 'Select player to kick');
+        kickTargets.forEach(player => makeOption(kickTarget, player.id, player.name));
+      } else {
+        makeOption(kickTarget, '', 'No other players to kick');
+        kickTarget.disabled = true;
+      }
+      actions.append(kickTarget);
+      const kickButton = addActionButton(actions, 'Kick selected player', () => {
+        if (kickTarget.value) send(controller.socket, 'room:kick', { playerId: kickTarget.value }, controller.label);
       }, 'secondary');
+      kickButton.disabled = !kickTargets.length;
+      ['up', 'down', 'left', 'right', 'confirm', 'back'].forEach(command => {
+        addActionButton(actions, 'Screen: ' + command, () => send(controller.socket, 'controller:command', { command }, controller.label), 'secondary');
+      });
+      addActionButton(actions, 'Pause game', () => send(controller.socket, 'controller:game-control', { action: 'pause' }, controller.label), 'secondary');
+      addActionButton(actions, 'Resume game', () => send(controller.socket, 'controller:game-control', { action: 'resume' }, controller.label), 'secondary');
+      addActionButton(actions, 'Stop game', () => send(controller.socket, 'controller:game-control', { action: 'stop' }, controller.label), 'secondary');
       addActionButton(actions, 'Test invalid envelope', () => {
         if (!controller.socket || !controller.socket.connected) return write(controller.label + ' is disconnected');
         controller.socket.emit('game:input', { v: 99, timestamp: Date.now(), payload: { type: 'action', action: { componentId: 'jump', value: { kind: 'button', pressed: true } } } });
