@@ -1,4 +1,8 @@
-import type { ControllerAction, ControllerLayout } from './protocol.ts'
+import {
+  MAX_TEXT_LENGTH,
+  type ControllerAction,
+  type ControllerLayout,
+} from './protocol.ts'
 
 export type ValidationResult =
   | { ok: true }
@@ -9,6 +13,7 @@ export type ValidationResult =
         | 'unknown-component'
         | 'wrong-component-kind'
         | 'unknown-option'
+        | 'text-too-long'
         | 'rejected-by-game'
     }
 
@@ -47,6 +52,13 @@ export function validateAction(
     const { optionId } = action.value
     if (!component.options.some(({ id }) => id === optionId)) {
       return { ok: false, reason: 'unknown-option' }
+    }
+  }
+
+  if (component.kind === 'text' && action.value.kind === 'text') {
+    const maxLength = component.maxLength ?? MAX_TEXT_LENGTH
+    if (action.value.text.length > maxLength) {
+      return { ok: false, reason: 'text-too-long' }
     }
   }
 

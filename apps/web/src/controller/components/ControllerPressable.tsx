@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 type ControllerPressableProps = {
   ariaLabel?: string
   children: ReactNode
+  describedBy?: string
   onPress: () => void
   onRelease: () => void
 }
@@ -16,6 +17,7 @@ type ControllerPressableProps = {
 export function ControllerPressable({
   ariaLabel,
   children,
+  describedBy,
   onPress,
   onRelease,
 }: ControllerPressableProps) {
@@ -53,6 +55,7 @@ export function ControllerPressable({
 
   return (
     <Button
+      aria-describedby={describedBy}
       aria-label={ariaLabel}
       onClick={handleClick}
       onPointerCancel={handlePointerAbort}

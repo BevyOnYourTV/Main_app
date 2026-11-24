@@ -9,6 +9,7 @@ import { ControllerPressable } from './ControllerPressable'
 type Direction = 'up' | 'down' | 'left' | 'right'
 
 type ControllerDpadProps = {
+  describedBy?: string
   label: string
   onChange: (direction: Direction | 'none') => void
 }
@@ -20,9 +21,14 @@ const directions = [
   { direction: 'down', icon: ArrowDownIcon, position: 'col-start-2 row-start-3' },
 ] as const
 
-export function ControllerDpad({ label, onChange }: ControllerDpadProps) {
+export function ControllerDpad({
+  describedBy,
+  label,
+  onChange,
+}: ControllerDpadProps) {
   return (
     <div
+      aria-describedby={describedBy}
       aria-label={label}
       className="grid grid-cols-3 grid-rows-3 gap-2"
       role="group"

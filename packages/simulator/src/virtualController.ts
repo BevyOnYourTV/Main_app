@@ -1,11 +1,17 @@
 import {
   createControllerSdk,
   createMemoryTransportPair,
+  MAX_TEXT_LENGTH,
+  type ActionValue,
+  type ControllerComponent,
   type ControllerSdk,
   type Player,
   type ValidationResult,
 } from '@platform/sdk'
 import type { Room } from './room'
+
+const BOT_TEXT_LENGTH = 20
+const BOT_STROKE_POINTS = 10
 
 export type VirtualController = {
   leave: () => void
@@ -52,6 +58,41 @@ export function createRandomBot(
     return item
   }
 
+  const randomValue = (component: ControllerComponent): ActionValue => {
+    switch (component.kind) {
+      case 'button':
+        return { kind: 'button', pressed: pick([true, false]) }
+      case 'dpad':
+        return {
+          kind: 'dpad',
+          direction: pick(['up', 'down', 'left', 'right', 'none'] as const),
+        }
+      case 'joystick':
+        return { kind: 'joystick', x: random() * 2 - 1, y: random() * 2 - 1 }
+      case 'touchpad':
+        return {
+          kind: 'touchpad',
+          phase: pick(['start', 'move', 'end'] as const),
+          x: random(),
+          y: random(),
+        }
+      case 'text': {
+        const longest = Math.min(component.maxLength ?? MAX_TEXT_LENGTH, BOT_TEXT_LENGTH)
+        return { kind: 'text', text: 'b'.repeat(1 + Math.floor(random() * longest)) }
+      }
+      case 'choice':
+        return { kind: 'choice', optionId: pick(component.options).id }
+      case 'drawing':
+        return {
+          kind: 'drawing',
+          points: Array.from(
+            { length: 1 + Math.floor(random() * BOT_STROKE_POINTS) },
+            () => [random(), random()] as [number, number],
+          ),
+        }
+    }
+  }
+
   return {
     step: () => {
       const layout = sdk.getLayout()
@@ -59,23 +100,7 @@ export function createRandomBot(
         return null
       }
       const component = pick(layout.components)
-      switch (component.kind) {
-        case 'button':
-          return sdk.sendAction(component.id, {
-            kind: 'button',
-            pressed: pick([true, false]),
-          })
-        case 'dpad':
-          return sdk.sendAction(component.id, {
-            kind: 'dpad',
-            direction: pick(['up', 'down', 'left', 'right', 'none'] as const),
-          })
-        case 'choice':
-          return sdk.sendAction(component.id, {
-            kind: 'choice',
-            optionId: pick(component.options).id,
-          })
-      }
+      return sdk.sendAction(component.id, randomValue(component))
     },
   }
 }

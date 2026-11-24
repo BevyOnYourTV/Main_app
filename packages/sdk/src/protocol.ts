@@ -9,35 +9,60 @@ export const playerSchema = z.object({
   avatar: z.string().max(64).optional(),
 })
 
-const buttonSchema = z.object({
-  kind: z.literal('button'),
-  id: idSchema,
-  label: labelSchema,
-})
+/** Version of the controller layout format; a layout without `version` is version 1. */
+export const CONTROLLER_LAYOUT_VERSION = 1
 
-const dpadSchema = z.object({
-  kind: z.literal('dpad'),
-  id: idSchema,
-  label: labelSchema,
-})
+/** Longest text a player can send, whatever a component allows. */
+export const MAX_TEXT_LENGTH = 280
 
-const choiceSchema = z.object({
-  kind: z.literal('choice'),
+/** Most points in one drawing stroke. */
+export const MAX_STROKE_POINTS = 256
+
+/** Fields shared by every component: `label` is its accessible name, `description` an optional hint. */
+const componentBase = {
   id: idSchema,
   label: labelSchema,
-  options: z
-    .array(z.object({ id: idSchema, label: labelSchema }))
-    .min(2)
-    .max(8),
-})
+  description: z.string().min(1).max(200).optional(),
+}
+
+/** Every component kind, for lists such as a game manifest's `controllerComponents`. */
+export const CONTROLLER_COMPONENT_KINDS = [
+  'button',
+  'dpad',
+  'joystick',
+  'touchpad',
+  'text',
+  'choice',
+  'drawing',
+] as const
+
+const unitSchema = z.number().min(0).max(1)
+const axisSchema = z.number().min(-1).max(1)
 
 export const controllerComponentSchema = z.discriminatedUnion('kind', [
-  buttonSchema,
-  dpadSchema,
-  choiceSchema,
+  z.object({ ...componentBase, kind: z.literal('button') }),
+  z.object({ ...componentBase, kind: z.literal('dpad') }),
+  z.object({ ...componentBase, kind: z.literal('joystick') }),
+  z.object({ ...componentBase, kind: z.literal('touchpad') }),
+  z.object({
+    ...componentBase,
+    kind: z.literal('text'),
+    maxLength: z.number().int().min(1).max(MAX_TEXT_LENGTH).optional(),
+    placeholder: z.string().max(80).optional(),
+  }),
+  z.object({
+    ...componentBase,
+    kind: z.literal('choice'),
+    options: z
+      .array(z.object({ id: idSchema, label: labelSchema }))
+      .min(2)
+      .max(8),
+  }),
+  z.object({ ...componentBase, kind: z.literal('drawing') }),
 ])
 
 export const controllerLayoutSchema = z.object({
+  version: z.literal(CONTROLLER_LAYOUT_VERSION).optional(),
   components: z
     .array(controllerComponentSchema)
     .min(1)
@@ -55,7 +80,28 @@ export const actionValueSchema = z.discriminatedUnion('kind', [
     kind: z.literal('dpad'),
     direction: z.enum(['up', 'down', 'left', 'right', 'none']),
   }),
+  /** Stick position; (0, 0) is the centre, sent again when released. */
+  z.object({ kind: z.literal('joystick'), x: axisSchema, y: axisSchema }),
+  /** Touch on the free area, in fractions of its width and height. */
+  z.object({
+    kind: z.literal('touchpad'),
+    phase: z.enum(['start', 'move', 'end']),
+    x: unitSchema,
+    y: unitSchema,
+  }),
+  z.object({
+    kind: z.literal('text'),
+    text: z.string().max(MAX_TEXT_LENGTH),
+  }),
   z.object({ kind: z.literal('choice'), optionId: idSchema }),
+  /** One finished stroke, in fractions of the canvas width and height. */
+  z.object({
+    kind: z.literal('drawing'),
+    points: z
+      .array(z.tuple([unitSchema, unitSchema]))
+      .min(1)
+      .max(MAX_STROKE_POINTS),
+  }),
 ])
 
 export const controllerActionSchema = z.object({

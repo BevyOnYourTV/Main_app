@@ -2,12 +2,14 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 
 type ControllerChoiceProps = {
+  describedBy?: string
   label: string
   onSelect: (optionId: string) => void
   options: ReadonlyArray<{ id: string; label: string }>
 }
 
 export function ControllerChoice({
+  describedBy,
   label,
   onSelect,
   options,
@@ -20,7 +22,7 @@ export function ControllerChoice({
   }
 
   return (
-    <fieldset className="grid gap-2 border-0 p-0">
+    <fieldset aria-describedby={describedBy} className="grid gap-2 border-0 p-0">
       <legend className="mb-2 text-lg font-bold">{label}</legend>
       {options.map((option) => (
         <Button

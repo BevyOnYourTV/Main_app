@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { CONTROLLER_COMPONENT_KINDS } from './protocol.ts'
 
 export const MAX_PLAYERS_PER_ROOM = 8
 
@@ -10,7 +11,7 @@ export const gameManifestSchema = z
     entry: z.string().min(1),
     minPlayers: z.number().int().min(1).max(MAX_PLAYERS_PER_ROOM),
     maxPlayers: z.number().int().min(1).max(MAX_PLAYERS_PER_ROOM),
-    controllerComponents: z.array(z.enum(['button', 'dpad', 'choice'])).min(1),
+    controllerComponents: z.array(z.enum(CONTROLLER_COMPONENT_KINDS)).min(1),
     accessibility: z.array(z.string().min(1)),
   })
   .refine(({ minPlayers, maxPlayers }) => minPlayers <= maxPlayers, {

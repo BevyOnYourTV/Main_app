@@ -13,10 +13,39 @@ const layout: ControllerLayout = {
         { id: 'no', label: 'No' },
       ],
     },
+    { kind: 'text', id: 'answer', label: 'Answer', maxLength: 5 },
+    { kind: 'text', id: 'story', label: 'Story' },
   ],
 }
 
 describe('validateAction', () => {
+  it('accepts text within the component limit', () => {
+    expect(
+      validateAction(layout, {
+        componentId: 'answer',
+        value: { kind: 'text', text: 'hello' },
+      }),
+    ).toEqual({ ok: true })
+  })
+
+  it('rejects text longer than the component allows', () => {
+    expect(
+      validateAction(layout, {
+        componentId: 'answer',
+        value: { kind: 'text', text: 'hello!' },
+      }),
+    ).toEqual({ ok: false, reason: 'text-too-long' })
+  })
+
+  it('allows the platform limit when the component sets none', () => {
+    expect(
+      validateAction(layout, {
+        componentId: 'story',
+        value: { kind: 'text', text: 'a'.repeat(280) },
+      }),
+    ).toEqual({ ok: true })
+  })
+
   it('accepts an action matching the layout', () => {
     expect(
       validateAction(layout, {
