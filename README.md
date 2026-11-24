@@ -9,6 +9,11 @@ This repository contains the main AirConsole application. The current web client
 ```text
 apps/
   web/    React and TypeScript web application
+  server/ Nest js powered node server
+packages/
+  sdk/ software development kit for the communication between the cotroller, console and games
+games/
+  testgame/ A test game to showcase the implementation of the sdk
 ```
 
 The web application is intended to support the shared landing experience, the TV/desktop console, and the mobile controller interface.
@@ -23,8 +28,8 @@ The web application is intended to support the shared landing experience, the TV
 ### Run the web application
 
 ```bash
-cd apps/web
 npm install
+cd apps/web
 npm run dev
 ```
 
