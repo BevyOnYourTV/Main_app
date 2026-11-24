@@ -12,6 +12,7 @@ import {
 import { LobbyJoinDetails } from '../components/LobbyJoinDetails'
 import { LobbyNavigationRail } from '../components/LobbyNavigationRail'
 import { getSessionSelectedGame } from '../data/selectedGameSession'
+import { useSdk } from '../../shared/provider/SdkContext'
 
 const mockPlayers: LobbyPlayer[] = [
   { id: 1, name: 'Player 1', status: 'Connected' },
@@ -31,6 +32,7 @@ export function LobbyPage() {
     focusKey: 'LOBBY_PAGE',
     preferredChildFocusKey: 'LOBBY_KICK_1',
   })
+  const { roomCode } = useSdk()
 
   useEffect(() => {
     focusSelf()
@@ -60,7 +62,7 @@ export function LobbyPage() {
 
             <div className="grid gap-8 rounded-3xl border border-primary/50 bg-primary/15 p-5 text-left sm:p-7 min-[1180px]:grid-cols-[minmax(0,1.7fr)_minmax(16rem,0.8fr)] min-[1180px]:gap-8 min-[1180px]:p-8">
               <LobbyPlayerList maxPlayers={8} players={mockPlayers} />
-              <LobbyJoinDetails roomCode="ABC 123" />
+              <LobbyJoinDetails roomCode={roomCode} />
             </div>
 
             <nav aria-label="Next lobby destination">

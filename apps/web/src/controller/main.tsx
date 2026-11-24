@@ -1,7 +1,8 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import '../shared/styles/tailwind.css'
-import { ControllerPage } from './pages/ControllerPage'
+import { ControllerRouter } from './router'
+import { SdkProvider } from '@/shared/provider/SdkContext'
 
 const rootElement = document.getElementById('root')
 
@@ -11,6 +12,8 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <ControllerPage />
+      <SdkProvider device_type='controller'>
+        <ControllerRouter />
+      </SdkProvider>
   </StrictMode>,
 )

@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { init } from '@noriginmedia/norigin-spatial-navigation-core';
 import '../shared/styles/tailwind.css'
 import { ConsoleRouter } from './router'
+import { SdkProvider } from '../shared/provider/SdkContext'
 
 init({
   debug: false,
@@ -17,6 +18,8 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <ConsoleRouter />
+    <SdkProvider device_type='console'>
+      <ConsoleRouter/>
+    </SdkProvider>
   </StrictMode>,
 )
