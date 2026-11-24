@@ -44,3 +44,11 @@ describe('parseGameManifest', () => {
     ).toThrow()
   })
 })
+
+describe('parseGameManifest components', () => {
+  it('accepts every controller component kind', () => {
+    expect(() =>
+      parseGameManifest({ ...validManifest, controllerComponents: ['joystick', 'touchpad', 'text', 'drawing'] }),
+    ).not.toThrow()
+  })
+})

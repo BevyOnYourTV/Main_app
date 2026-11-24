@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   actionValueSchema,
+  CONTROLLER_COMPONENT_KINDS,
+  controllerComponentSchema,
   controllerLayoutSchema,
   MAX_STROKE_POINTS,
   MAX_TEXT_LENGTH,
@@ -72,5 +74,13 @@ describe('actionValueSchema', () => {
     ],
   ])('rejects %s', (_name, value) => {
     expect(actionValueSchema.safeParse(value).success).toBe(false)
+  })
+})
+
+describe('CONTROLLER_COMPONENT_KINDS', () => {
+  it('lists exactly the kinds of the component schema', () => {
+    const schemaKinds = controllerComponentSchema.options.map((option) => option.shape.kind.value)
+
+    expect([...CONTROLLER_COMPONENT_KINDS].sort()).toEqual([...schemaKinds].sort())
   })
 })

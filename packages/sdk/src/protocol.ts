@@ -25,6 +25,17 @@ const componentBase = {
   description: z.string().min(1).max(200).optional(),
 }
 
+/** Every component kind, for lists such as a game manifest's `controllerComponents`. */
+export const CONTROLLER_COMPONENT_KINDS = [
+  'button',
+  'dpad',
+  'joystick',
+  'touchpad',
+  'text',
+  'choice',
+  'drawing',
+] as const
+
 const unitSchema = z.number().min(0).max(1)
 const axisSchema = z.number().min(-1).max(1)
 
