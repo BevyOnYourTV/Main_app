@@ -10,6 +10,10 @@ const layout: ControllerLayout = {
   components: [
     { kind: 'button', id: 'fire', label: 'Fire' },
     { kind: 'dpad', id: 'move', label: 'Move' },
+    { kind: 'joystick', id: 'steer', label: 'Steer' },
+    { kind: 'touchpad', id: 'aim', label: 'Aim' },
+    { kind: 'text', id: 'answer', label: 'Answer', maxLength: 3 },
+    { kind: 'drawing', id: 'sketch', label: 'Sketch' },
     {
       kind: 'choice',
       id: 'vote',
