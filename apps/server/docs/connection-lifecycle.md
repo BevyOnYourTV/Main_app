@@ -217,6 +217,13 @@ host.emit('game:message', envelope({
 
 Only that player's socket receives `game:private`. The host can report scores with a `score` screen message; the server broadcasts valid scores as `game:score`.
 
+Turns and achievements are private too:
+
+| Screen message | Server effect |
+|---|---|
+| `turn` with `playerId`, or `null` for nobody | Stores the turn in the room and sends each controller `game:turn` with only `isYourTurn`. A controller that joins or reconnects gets it too. A turn given to an unknown player is ignored and logged. |
+| `achievement` with `playerId` and `achievementId` | Sends `game:achievement` to that player's socket only. |
+
 Lifecycle screen messages have these server effects:
 
 | Screen message | Server effect |

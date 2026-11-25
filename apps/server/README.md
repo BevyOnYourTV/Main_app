@@ -104,7 +104,7 @@ socket.emit('game:input', {
 | Master controller → server | `controller:game-control` | Pause, resume, or stop the active game. The server broadcasts the existing lifecycle events and room state. |
 | Controller → server → host | `game:input` → `player:action` | Validated controller action, checked against the active layout. |
 | Master controller → server → screen host | `controller:command` → `screen:command` | Allowlisted menu command (`up`, `down`, `left`, `right`, `confirm`, `back`). |
-| Host → server → controllers | `game:message` → `game:layout`, `game:private`, `game:score`, `game:started`, `game:paused`, `game:ended` | SDK screen messages routed to the room or one player. |
+| Host → server → controllers | `game:message` → `game:layout`, `game:private`, `game:score`, `game:turn`, `game:achievement`, `game:started`, `game:paused`, `game:ended` | SDK screen messages routed to the room or one player. |
 | Client → server → client | `ping` → `pong` | Round-trip latency measurement. |
 | Server → client | `error` | Versioned error code and safe validation details. |
 

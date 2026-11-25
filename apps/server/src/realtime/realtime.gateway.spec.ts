@@ -139,4 +139,41 @@ describe('RealtimeGateway', () => {
     expect(resumed.join).toHaveBeenCalledWith(roomCode);
     expect(resumedEvents.some(({ event }) => event === 'game:layout')).toBe(true);
   });
+
+  it('routes turns and achievements privately to each controller', () => {
+    const gateway = new RealtimeGateway();
+    const { socket: host, emitted: hostEvents } = createSocket('host');
+    const socketMap = new Map<string, ReturnType<typeof createSocket>['socket']>([[host.id, host]]);
+    Object.assign(gateway, {
+      server: { sockets: socketMap, to: vi.fn(() => ({ emit: vi.fn() })) },
+    });
+    gateway.handleConnection(host as never);
+    gateway.handleHello(host as never, envelope({ role: 'console' }));
+    gateway.handleCreateRoom(host as never, envelope({}));
+    const roomCode = eventData<{ payload: { roomCode: string } }>(hostEvents, 'room:created').payload.roomCode;
+    const join = (id: string, nickname: string) => {
+      const { socket, emitted } = createSocket(id);
+      socketMap.set(socket.id, socket);
+      gateway.handleConnection(socket as never);
+      gateway.handleHello(socket as never, envelope({ role: 'controller' }));
+      gateway.handleJoinRoom(socket as never, envelope({ roomCode, nickname }));
+      const playerId = eventData<{ payload: { playerId: string } }>(emitted, 'room:joined').payload.playerId;
+      return { emitted, playerId };
+    };
+    const payloadsOf = (events: Array<{ event: string; data: unknown }>, event: string) =>
+      events.filter((item) => item.event === event).map((item) => (item.data as { payload: unknown }).payload);
+    const alex = join('alex', 'Alex');
+    const sam = join('sam', 'Sam');
+
+    gateway.handleGameMessage(host as never, envelope({ type: 'turn', playerId: sam.playerId }));
+    gateway.handleGameMessage(host as never, envelope({ type: 'turn', playerId: 'nobody' }));
+    gateway.handleGameMessage(host as never, envelope({ type: 'achievement', playerId: alex.playerId, achievementId: 'first-win' }));
+    const late = join('late', 'Lou');
+
+    expect(payloadsOf(alex.emitted, 'game:turn')).toEqual([{ isYourTurn: false }]);
+    expect(payloadsOf(sam.emitted, 'game:turn')).toEqual([{ isYourTurn: true }]);
+    expect(payloadsOf(late.emitted, 'game:turn')).toEqual([{ isYourTurn: false }]);
+    expect(payloadsOf(alex.emitted, 'game:achievement')).toEqual([{ achievementId: 'first-win' }]);
+    expect(payloadsOf(sam.emitted, 'game:achievement')).toEqual([]);
+  });
 });
