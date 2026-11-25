@@ -42,6 +42,8 @@ type Room = {
   gameId?: string;
   layout?: ControllerLayout;
   playerLayouts: Map<string, ControllerLayout>;
+  /** Player whose turn it is, or null when the game uses no turns or it is nobody's turn. */
+  turnPlayerId: string | null;
 };
 
 const CODE_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -145,6 +147,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       players: new Map(),
       playerLayouts: new Map(),
       status: 'waiting',
+      turnPlayerId: null,
     };
     this.rooms.set(code, room);
     socket.data.roomCode = code;
@@ -191,6 +194,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     this.broadcastRoomState(room);
     const currentLayout = room.playerLayouts.get(player.id) ?? room.layout;
     if (currentLayout) this.emit(socket, 'game:layout', { layout: currentLayout });
+    if (room.turnPlayerId !== null) this.emit(socket, 'game:turn', { isYourTurn: room.turnPlayerId === player.id });
     this.logger.debug(`Controller joined room=${room.code} player=${player.id} players=${room.players.size}/${MAX_PLAYERS}`);
   }
 
@@ -244,6 +248,9 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
             layout,
             ...(restoredRoom.playerLayouts.has(restoredPlayerId) ? { playerId: restoredPlayerId } : {}),
           });
+        }
+        if (restoredRoom.turnPlayerId !== null) {
+          this.emit(socket, 'game:turn', { isYourTurn: restoredRoom.turnPlayerId === restoredPlayerId });
         }
       }
     }
@@ -465,6 +472,30 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
           }));
           this.logger.debug(`Score broadcast room=${room.code} player=${message.playerId} points=${message.points}`);
         }
+        return;
+      case 'turn': {
+        if (message.playerId !== null && !room.players.has(message.playerId)) {
+          this.logger.warn(`Turn ignored for unknown player room=${room.code} player=${message.playerId}`);
+          return;
+        }
+        room.turnPlayerId = message.playerId;
+        for (const player of room.players.values()) {
+          const socket = this.server.sockets.get(player.socketId);
+          if (socket) this.emit(socket, 'game:turn', { isYourTurn: player.id === message.playerId });
+        }
+        this.logger.debug(`Turn given room=${room.code} player=${message.playerId ?? 'none'}`);
+        return;
+      }
+      case 'achievement': {
+        const player = room.players.get(message.playerId);
+        if (!player) return;
+        const socket = this.server.sockets.get(player.socketId);
+        if (socket) this.emit(socket, 'game:achievement', { achievementId: message.achievementId });
+        this.logger.debug(`Achievement routed room=${room.code} player=${player.id} achievement=${message.achievementId}`);
+        return;
+      }
+      default:
+        throw new Error(`Unhandled game message: ${JSON.stringify(message satisfies never)}`);
     }
   }
 

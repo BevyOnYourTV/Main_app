@@ -144,3 +144,48 @@ describe('createScreenSdk', () => {
     expect(sdk.getPlayers()).toEqual([])
   })
 })
+
+describe('createScreenSdk turns, achievements and groups', () => {
+  it('shows a controller to a group, one message per player', () => {
+    const { sdk, sent } = setup()
+
+    sdk.setController(layout, { playerIds: ['p1', 'p2'] })
+
+    expect(sent.mock.calls.map(([message]) => message)).toEqual([
+      { type: 'set-controller', layout, playerId: 'p1' },
+      { type: 'set-controller', layout, playerId: 'p2' },
+    ])
+  })
+
+  it('refuses an empty group', () => {
+    const { sdk } = setup()
+
+    expect(() => sdk.setController(layout, { playerIds: [] })).toThrow('at least one player')
+  })
+
+  it('sends the same data privately to every current player', () => {
+    const { platformSide, sdk, sent } = setup()
+    platformSide.send({ type: 'players', players: [player, { id: 'p2', name: 'Bob' }] })
+
+    sdk.sendToAll({ round: 2 })
+
+    expect(sent.mock.calls.map(([message]) => message)).toEqual([
+      { type: 'private', playerId: 'p1', data: { round: 2 } },
+      { type: 'private', playerId: 'p2', data: { round: 2 } },
+    ])
+  })
+
+  it('gives the turn and unlocks achievements', () => {
+    const { sdk, sent } = setup()
+
+    sdk.setTurn('p1')
+    sdk.setTurn(null)
+    sdk.unlockAchievement('p1', 'first-win')
+
+    expect(sent.mock.calls.map(([message]) => message)).toEqual([
+      { type: 'turn', playerId: 'p1' },
+      { type: 'turn', playerId: null },
+      { type: 'achievement', playerId: 'p1', achievementId: 'first-win' },
+    ])
+  })
+})

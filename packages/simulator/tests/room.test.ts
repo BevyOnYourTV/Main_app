@@ -211,3 +211,67 @@ describe('createRoom', () => {
     await expect(measure).rejects.toThrow('disposed')
   })
 })
+
+describe('createRoom turns and achievements', () => {
+  it('tells each phone only whether it is its turn', () => {
+    const { game, room } = setup()
+    const first = addVirtualController(room, ada)
+    const second = addVirtualController(room, bob)
+
+    game.setTurn('p2')
+
+    expect(room.getTurn()).toBe('p2')
+    expect(first.sdk.isMyTurn()).toBe(false)
+    expect(second.sdk.isMyTurn()).toBe(true)
+  })
+
+  it('tells a player who joins during a turn-based game', () => {
+    const { game, room } = setup()
+    game.setTurn('p1')
+
+    const controller = addVirtualController(room, ada)
+
+    expect(controller.sdk.isMyTurn()).toBe(true)
+  })
+
+  it('ends the turns with null', () => {
+    const { game, room } = setup()
+    const controller = addVirtualController(room, ada)
+    game.setTurn('p1')
+
+    game.setTurn(null)
+
+    expect(room.getTurn()).toBeNull()
+    expect(controller.sdk.isMyTurn()).toBe(false)
+  })
+
+  it('announces an achievement to its player only, once', () => {
+    const { game, room } = setup()
+    const first = addVirtualController(room, ada)
+    const second = addVirtualController(room, bob)
+    const onFirst = vi.fn()
+    const onSecond = vi.fn()
+    first.sdk.onAchievement(onFirst)
+    second.sdk.onAchievement(onSecond)
+
+    game.unlockAchievement('p1', 'first-win')
+    game.unlockAchievement('p1', 'first-win')
+
+    expect(onFirst).toHaveBeenCalledWith('first-win')
+    expect(onSecond).not.toHaveBeenCalled()
+    expect(room.getAchievements()).toEqual({ p1: ['first-win'] })
+  })
+
+  it('shows a group controller to its members only', () => {
+    const { game, room } = setup()
+    const first = addVirtualController(room, ada)
+    const second = addVirtualController(room, bob)
+    const third = addVirtualController(room, { id: 'p3', name: 'Cy' })
+
+    game.setController(layout, { playerIds: ['p1', 'p3'] })
+
+    expect(first.sdk.getLayout()).toEqual(layout)
+    expect(second.sdk.getLayout()).toBeNull()
+    expect(third.sdk.getLayout()).toEqual(layout)
+  })
+})

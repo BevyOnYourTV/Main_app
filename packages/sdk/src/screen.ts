@@ -22,6 +22,11 @@ export type PlayerAction = {
   playerId: string
 }
 
+/** Players a controller is shown to; omit it to show the controller to everyone. */
+export type ControllerTarget =
+  | { playerId: string }
+  | { playerIds: readonly string[] }
+
 export type ScreenSdk = {
   dispose: () => void
   end: () => void
@@ -32,13 +37,18 @@ export type ScreenSdk = {
   pause: () => void
   recordScore: (playerId: string, points: number) => void
   resume: () => void
+  /** Sends the same data to every current player, as a private message to each. */
+  sendToAll: (data: PrivateData) => void
   sendToPlayer: (playerId: string, data: PrivateData) => void
-  setController: (
-    layout: ControllerLayout,
-    target?: { playerId: string },
-  ) => void
+  setController: (layout: ControllerLayout, target?: ControllerTarget) => void
+  /** Gives the turn to a player, or to nobody with `null`. Each phone learns only whether it is its turn. */
+  setTurn: (playerId: string | null) => void
   start: () => void
+  unlockAchievement: (playerId: string, achievementId: string) => void
 }
+
+const targetIds = (target: ControllerTarget): readonly string[] =>
+  'playerId' in target ? [target.playerId] : target.playerIds
 
 export const reportProtocolError: ProtocolErrorHandler = (error, message) => {
   console.error('Invalid SDK message ignored:', error.message, message)
@@ -106,14 +116,28 @@ export function createScreenSdk(
     recordScore: (playerId, points) =>
       send({ type: 'score', playerId, points }),
     resume: () => lifecycle('resume'),
+    sendToAll: (data) =>
+      players.forEach(({ id }) => send({ type: 'private', playerId: id, data })),
     sendToPlayer: (playerId, data) =>
       send({ type: 'private', playerId, data }),
-    setController: (layout, target) =>
-      send({
-        type: 'set-controller',
-        layout: controllerLayoutSchema.parse(layout),
-        ...(target ? { playerId: target.playerId } : {}),
-      }),
+    setController: (layout, target) => {
+      const parsed = controllerLayoutSchema.parse(layout)
+      if (!target) {
+        send({ type: 'set-controller', layout: parsed })
+        return
+      }
+      const ids = targetIds(target)
+      if (ids.length === 0) {
+        throw new Error('setController needs at least one player id')
+      }
+      // One message per player: the platform never shows a targeted layout to anyone else.
+      ids.forEach((playerId) =>
+        send({ type: 'set-controller', layout: parsed, playerId }),
+      )
+    },
+    setTurn: (playerId) => send({ type: 'turn', playerId }),
     start: () => lifecycle('start'),
+    unlockAchievement: (playerId, achievementId) =>
+      send({ type: 'achievement', playerId, achievementId }),
   }
 }

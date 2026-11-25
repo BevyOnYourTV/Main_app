@@ -105,6 +105,9 @@ export const realtimeServerPayloadSchemas = {
   }),
   'game:private': z.object({ data: z.json() }),
   'game:score': z.object({ playerId: idSchema, points: z.number().int() }),
+  // Sent to each controller separately: a player only learns about its own turn and achievements.
+  'game:turn': z.object({ isYourTurn: z.boolean() }),
+  'game:achievement': z.object({ achievementId: idSchema }),
   pong: z.object({ id: z.number().int().nonnegative(), serverTimestamp: z.number().int().positive() }),
   error: z.object({
     code: z.enum([
@@ -152,6 +155,8 @@ export const realtimeServerSchemas = {
   'game:layout': createEnvelopeSchema(realtimeServerPayloadSchemas['game:layout']),
   'game:private': createEnvelopeSchema(realtimeServerPayloadSchemas['game:private']),
   'game:score': createEnvelopeSchema(realtimeServerPayloadSchemas['game:score']),
+  'game:turn': createEnvelopeSchema(realtimeServerPayloadSchemas['game:turn']),
+  'game:achievement': createEnvelopeSchema(realtimeServerPayloadSchemas['game:achievement']),
   pong: createEnvelopeSchema(realtimeServerPayloadSchemas.pong),
   error: createEnvelopeSchema(realtimeServerPayloadSchemas.error),
 } as const;

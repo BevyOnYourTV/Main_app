@@ -41,7 +41,10 @@ export type Room = {
   getLog: () => readonly LogEntry[]
   getPhase: () => GamePhase
   getPlayers: () => readonly Player[]
+  getAchievements: () => Readonly<Record<string, readonly string[]>>
   getScores: () => Readonly<Record<string, number>>
+  /** The player whose turn it is, or `null`. */
+  getTurn: () => string | null
   measureLatency: () => Promise<number>
   onLog: (handler: (entry: LogEntry) => void) => Unsubscribe
 }
@@ -58,6 +61,10 @@ type PendingPing = {
   resolve: (latency: number) => void
   sentAt: number
   timer: ReturnType<typeof setTimeout>
+}
+
+function unhandledMessage(message: never): never {
+  throw new Error(`Unhandled screen message: ${JSON.stringify(message)}`)
 }
 
 const phaseByLifecycle = {
@@ -84,6 +91,8 @@ export function createRoom({
   let sharedLayout: ControllerLayout | null = null
   let phase: GamePhase = 'idle'
   let scores: Readonly<Record<string, number>> = {}
+  let turnPlayerId: string | null = null
+  let achievements: Readonly<Record<string, readonly string[]>> = {}
   let pings: ReadonlyMap<number, PendingPing> = new Map()
   let nextPingId = 0
 
@@ -170,14 +179,48 @@ export function createRoom({
         }
         break
       }
+      case 'turn':
+        connections.forEach((connection) =>
+          sendToController(connection, {
+            type: 'turn',
+            isYourTurn: connection.player.id === turnPlayerId,
+          }),
+        )
+        break
+      case 'achievement': {
+        const connection = connections.get(message.playerId)
+        if (connection) {
+          sendToController(connection, {
+            type: 'achievement',
+            achievementId: message.achievementId,
+          })
+        }
+        break
+      }
+      case 'lifecycle':
+      case 'score':
+        break
+      default:
+        unhandledMessage(message)
     }
   }
 
+  /** Applies a message to the room state before it is logged, so log readers see the new state. */
   const applyGameState = (message: ScreenOutbound) => {
     if (message.type === 'lifecycle') {
       phase = phaseByLifecycle[message.phase]
     } else if (message.type === 'score') {
       scores = { ...scores, [message.playerId]: message.points }
+    } else if (message.type === 'turn') {
+      turnPlayerId = message.playerId
+    } else if (message.type === 'achievement') {
+      const unlocked = achievements[message.playerId] ?? []
+      if (!unlocked.includes(message.achievementId)) {
+        achievements = {
+          ...achievements,
+          [message.playerId]: [...unlocked, message.achievementId],
+        }
+      }
     }
   }
 
@@ -256,6 +299,12 @@ export function createRoom({
       if (sharedLayout) {
         setLayout(connection, sharedLayout)
       }
+      if (turnPlayerId !== null) {
+        sendToController(connection, {
+          type: 'turn',
+          isYourTurn: player.id === turnPlayerId,
+        })
+      }
       return () => detach(player.id)
     },
     dispose: () => {
@@ -268,10 +317,12 @@ export function createRoom({
       })
       pings = new Map()
     },
+    getAchievements: () => achievements,
     getLog: () => log,
     getPhase: () => phase,
     getPlayers: () => [...connections.values()].map(({ player }) => player),
     getScores: () => scores,
+    getTurn: () => turnPlayerId,
     measureLatency: () =>
       new Promise((resolve, reject) => {
         const id = nextPingId
