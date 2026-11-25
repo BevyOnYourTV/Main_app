@@ -9,6 +9,7 @@ export {
 export * from './protocol.ts'
 export {
   createScreenSdk,
+  type ControllerTarget,
   type PlayerAction,
   type ProtocolErrorHandler,
   type ScreenSdk,

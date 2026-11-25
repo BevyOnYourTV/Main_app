@@ -147,12 +147,21 @@ export const screenOutboundSchema = z.discriminatedUnion('type', [
     playerId: idSchema,
     points: z.number().int(),
   }),
+  /** Whose turn it is; `null` when it is nobody's turn. */
+  z.object({ type: z.literal('turn'), playerId: idSchema.nullable() }),
+  z.object({
+    type: z.literal('achievement'),
+    playerId: idSchema,
+    achievementId: idSchema,
+  }),
 ])
 
-/** Messages the platform sends to a phone. */
+/** Messages the platform sends to a phone. A phone only learns about its own turn and achievements. */
 export const controllerInboundSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('layout'), layout: controllerLayoutSchema }),
   z.object({ type: z.literal('private'), data: privateDataSchema }),
+  z.object({ type: z.literal('turn'), isYourTurn: z.boolean() }),
+  z.object({ type: z.literal('achievement'), achievementId: idSchema }),
 ])
 
 /** Messages a phone sends to the platform. */

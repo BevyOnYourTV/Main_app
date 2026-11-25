@@ -14,8 +14,11 @@ import { validateAction, type ValidationResult } from './validation.ts'
 export type ControllerSdk = {
   dispose: () => void
   getLayout: () => ControllerLayout | null
+  isMyTurn: () => boolean
+  onAchievement: (handler: (achievementId: string) => void) => Unsubscribe
   onLayout: (handler: (layout: ControllerLayout) => void) => Unsubscribe
   onPrivateMessage: (handler: (data: PrivateData) => void) => Unsubscribe
+  onTurn: (handler: (isMyTurn: boolean) => void) => Unsubscribe
   sendAction: (componentId: string, value: ActionValue) => ValidationResult
 }
 
@@ -26,14 +29,27 @@ export function createControllerSdk(
   const report = options.onProtocolError ?? reportProtocolError
   const layouts = createEmitter<ControllerLayout>()
   const privateMessages = createEmitter<PrivateData>()
+  const turns = createEmitter<boolean>()
+  const achievements = createEmitter<string>()
   let layout: ControllerLayout | null = null
+  let isMyTurn = false
 
   const handle = (message: ControllerInbound) => {
-    if (message.type === 'layout') {
-      layout = message.layout
-      layouts.emit(message.layout)
-    } else {
-      privateMessages.emit(message.data)
+    switch (message.type) {
+      case 'layout':
+        layout = message.layout
+        layouts.emit(message.layout)
+        break
+      case 'private':
+        privateMessages.emit(message.data)
+        break
+      case 'turn':
+        isMyTurn = message.isYourTurn
+        turns.emit(message.isYourTurn)
+        break
+      case 'achievement':
+        achievements.emit(message.achievementId)
+        break
     }
   }
 
@@ -49,8 +65,11 @@ export function createControllerSdk(
   return {
     dispose: stop,
     getLayout: () => layout,
+    isMyTurn: () => isMyTurn,
+    onAchievement: achievements.subscribe,
     onLayout: layouts.subscribe,
     onPrivateMessage: privateMessages.subscribe,
+    onTurn: turns.subscribe,
     sendAction: (componentId, value) => {
       const action = { componentId, value }
       const result = validateAction(layout, action)

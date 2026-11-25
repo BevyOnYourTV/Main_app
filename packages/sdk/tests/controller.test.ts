@@ -70,3 +70,27 @@ describe('createControllerSdk', () => {
     expect(onProtocolError).toHaveBeenCalledOnce()
   })
 })
+
+describe('createControllerSdk turns and achievements', () => {
+  it('tracks whether it is this player turn', () => {
+    const { platformSide, sdk } = setup()
+    const onTurn = vi.fn()
+    sdk.onTurn(onTurn)
+
+    expect(sdk.isMyTurn()).toBe(false)
+    platformSide.send({ type: 'turn', isYourTurn: true })
+
+    expect(sdk.isMyTurn()).toBe(true)
+    expect(onTurn).toHaveBeenCalledWith(true)
+  })
+
+  it('announces an unlocked achievement', () => {
+    const { platformSide, sdk } = setup()
+    const onAchievement = vi.fn()
+    sdk.onAchievement(onAchievement)
+
+    platformSide.send({ type: 'achievement', achievementId: 'first-win' })
+
+    expect(onAchievement).toHaveBeenCalledWith('first-win')
+  })
+})
